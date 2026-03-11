@@ -1,29 +1,20 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getInviteByCode, markInviteUsed, createUser, getUserByEmail } from "@/lib/db";
+import { createUser, getUserByEmail } from "@/lib/db";
+
+const UNIVERSAL_ACCESS_CODE = process.env.ACCESS_CODE || "CASEASSIST2026";
 
 export async function POST(request) {
   try {
     const { email, password, name, inviteCode } = await request.json();
 
     if (!email || !password || !inviteCode) {
-      return NextResponse.json({ error: "Email, password, and invite code are required." }, { status: 400 });
+      return NextResponse.json({ error: "Email, password, and access code are required." }, { status: 400 });
     }
 
-    // Validate invite code
-    const invite = await getInviteByCode(inviteCode);
-    if (!invite) {
-      return NextResponse.json({ error: "Invalid or expired invite code." }, { status: 403 });
-    }
-
-    // If invite is email-locked, check it matches
-    if (invite.email && invite.email.toLowerCase() !== email.toLowerCase()) {
-      return NextResponse.json({ error: "This invite code is reserved for a different email." }, { status: 403 });
-    }
-
-    // Check if invite has expired
-    if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-      return NextResponse.json({ error: "This invite code has expired." }, { status: 403 });
+    // Check universal access code
+    if (inviteCode !== UNIVERSAL_ACCESS_CODE) {
+      return NextResponse.json({ error: "Invalid access code." }, { status: 403 });
     }
 
     // Check if user already exists
@@ -38,12 +29,9 @@ export async function POST(request) {
       email: email.toLowerCase(),
       passwordHash,
       name: name || email.split("@")[0],
-      role: invite.role || "user",
-      status: "active", // Auto-approve since they have a valid invite
+      role: "user",
+      status: "active",
     });
-
-    // Mark invite as used
-    await markInviteUsed(inviteCode, user.id);
 
     return NextResponse.json({ success: true, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
   } catch (err) {
