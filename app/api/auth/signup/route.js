@@ -12,18 +12,15 @@ export async function POST(request) {
       return NextResponse.json({ error: "Email, password, and access code are required." }, { status: 400 });
     }
 
-    // Check universal access code
     if (inviteCode !== UNIVERSAL_ACCESS_CODE) {
       return NextResponse.json({ error: "Invalid access code." }, { status: 403 });
     }
 
-    // Check if user already exists
     const existing = await getUserByEmail(email);
     if (existing) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
     }
 
-    // Create user
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await createUser({
       email: email.toLowerCase(),

@@ -3,15 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { signOut } from "next-auth/react";
 
-/*
-  This is the full ClaimLens portal UI — identical to the artifact version
-  but adapted for Next.js:
-  - API calls go to /api/chat (server-side proxy) instead of direct Anthropic calls
-  - Claims stored in localStorage for now (swap to DB API routes for production)
-  - User session passed as prop from server component
-*/
-
-/* ═══ Markdown renderer ═══ */
 const Msg = ({ text }) => {
   const lines = (text || "").split("\n");
   return (<div className="ai-text">{lines.map((raw, i) => {
@@ -44,12 +35,14 @@ const stageOf = id => STAGES.find(s => s.id === id) || STAGES[0];
 const fmt = iso => { if (!iso || iso === "—") return "—"; try { return new Date(iso).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }); } catch { return iso; } };
 const fmtTime = iso => { try { return new Date(iso).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); } catch { return ""; } };
 
-// ── Local storage for claims (swap to API calls for production DB) ──
-function loadClaims() {
-  try { return JSON.parse(window.localStorage.getItem("claimlens_claims") || "[]"); } catch { return []; }
+function storageKey(email) { return `caseassist_claims_${email?.toLowerCase()}`; }
+function loadClaims(email) {
+  if (!email) return [];
+  try { return JSON.parse(window.localStorage.getItem(storageKey(email)) || "[]"); } catch { return []; }
 }
-function persistClaims(claims) {
-  try { window.localStorage.setItem("claimlens_claims", JSON.stringify(claims)); } catch {}
+function persistClaims(email, claims) {
+  if (!email) return;
+  try { window.localStorage.setItem(storageKey(email), JSON.stringify(claims)); } catch {}
 }
 
 export default function DashboardClient({ user }) {
@@ -69,19 +62,20 @@ export default function DashboardClient({ user }) {
   const endRef = useRef(null);
   const taRef = useRef(null);
 
-  useEffect(() => { setClaims(loadClaims()); }, []);
-  useEffect(() => { if (claims.length > 0) persistClaims(claims); }, [claims]);
+  useEffect(() => { setClaims(loadClaims(user.email)); }, [user.email]);
+  useEffect(() => { if (claims.length > 0 || window.localStorage.getItem(storageKey(user.email))) persistClaims(user.email, claims); }, [claims, user.email]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, loading]);
 
   const saveClaim = (c) => {
     c.updatedAt = new Date().toISOString();
+    c.ownerEmail = user.email.toLowerCase();
     setClaims(p => { const idx = p.findIndex(x => x.id === c.id); const n = [...p]; if (idx >= 0) n[idx] = c; else n.unshift(c); return n; });
     setActive(c);
   };
 
   const createClaim = () => {
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const c = { id, claimNumber: nf.claimNumber || `CL-${id.slice(0, 6).toUpperCase()}`, worker: nf.worker || "—", employer: nf.employer || "—", injuryDate: nf.injuryDate || "—", injuryType: nf.injuryType, description: nf.description || "", stage: "new", timeline: [{ date: new Date().toISOString(), type: "created", note: "Claim record created" }], documents: [], analyses: [], messages: [], notes: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    const c = { id, claimNumber: nf.claimNumber || `CL-${id.slice(0, 6).toUpperCase()}`, worker: nf.worker || "—", employer: nf.employer || "—", injuryDate: nf.injuryDate || "—", injuryType: nf.injuryType, description: nf.description || "", stage: "new", ownerEmail: user.email.toLowerCase(), timeline: [{ date: new Date().toISOString(), type: "created", note: "Case record created" }], documents: [], analyses: [], messages: [], notes: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     saveClaim(c);
     setNf({ claimNumber: "", worker: "", employer: "", injuryDate: "", injuryType: "Acute Injury", description: "" });
     setModal(null);
@@ -92,7 +86,7 @@ export default function DashboardClient({ user }) {
   const openChat = c => { if (c) { setActive(c); setMsgs(c.messages || []); } setView("chat"); };
   const changeStage = sid => { const c = { ...active, stage: sid, timeline: [...(active.timeline || []), { date: new Date().toISOString(), type: "stage", note: `Status → ${stageOf(sid).label}` }] }; saveClaim(c); setModal(null); };
   const addNote = () => { if (!noteIn.trim()) return; const c = { ...active, notes: [...(active.notes || []), { date: new Date().toISOString(), text: noteIn.trim() }], timeline: [...(active.timeline || []), { date: new Date().toISOString(), type: "note", note: noteIn.trim() }] }; saveClaim(c); setNoteIn(""); };
-  const delClaim = id => { setClaims(p => p.filter(c => c.id !== id)); persistClaims(claims.filter(c => c.id !== id)); if (active?.id === id) { setActive(null); setView("claims"); } };
+  const delClaim = id => { setClaims(p => { const next = p.filter(c => c.id !== id); persistClaims(user.email, next); return next; }); if (active?.id === id) { setActive(null); setView("claims"); } };
 
   const addFiles = useCallback(e => { const n = Array.from(e.target.files); setFiles(p => [...p, ...n]); n.forEach(f => { const r = new FileReader(); r.onload = ev => setFc(p => ({ ...p, [f.name]: ev.target.result })); r.readAsText(f); }); e.target.value = ""; }, []);
   const rmFile = n => { setFiles(p => p.filter(f => f.name !== n)); setFc(p => { const x = { ...p }; delete x[n]; return x; }); };
@@ -108,20 +102,16 @@ export default function DashboardClient({ user }) {
     const um = { role: "user", display: text || `Uploaded ${af.length} document${af.length > 1 ? "s" : ""}`, content, files: af.map(f => f.name), ts: new Date().toISOString() };
     const newMsgs = [...msgs, um]; setMsgs(newMsgs); setFiles([]); setFc({}); setLoading(true);
 
+    if (active && af.length > 0) { const c = { ...active }; c.documents = [...(c.documents || []), ...af.map(f => ({ name: f.name, addedAt: new Date().toISOString() }))]; c.timeline = [...(c.timeline || []), ...af.map(f => ({ date: new Date().toISOString(), type: "document", note: `Uploaded: ${f.name}` }))]; saveClaim(c); }
+
     try {
-      // ── Call server-side API route (not Anthropic directly) ──
       const hist = newMsgs.slice(-20).map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: hist }),
-      });
+      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: hist }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Request failed");
       const reply = data.reply;
       const am = { role: "assistant", content: reply, ts: new Date().toISOString() };
       const final = [...newMsgs, am]; setMsgs(final);
-
       if (active) {
         const c = { ...active, messages: final };
         if (/RULING PREDICTION|Five Point Check/i.test(reply)) {
@@ -147,10 +137,6 @@ export default function DashboardClient({ user }) {
   const recentClaims = claims.slice(0, 5);
   const stageCounts = STAGES.map(s => ({ ...s, count: claims.filter(c => c.stage === s.id).length })).filter(s => s.count > 0);
 
-  // ── Inline styles (same Apple system as artifact) ──
-  // Using inline styles here because this is a single-file client component.
-  // In production, move these to CSS modules or Tailwind.
-
   return (
     <>
       <style jsx global>{`
@@ -172,16 +158,15 @@ export default function DashboardClient({ user }) {
       `}</style>
 
       <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-        {/* NAV */}
         <nav style={{ height: 52, padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,.72)", backdropFilter: "saturate(180%) blur(20px)", borderBottom: ".5px solid rgba(0,0,0,.08)", flexShrink: 0, zIndex: 100 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => setView("home")}>
             <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--g900)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
             </div>
-            <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: -0.3 }}>ClaimLens</span>
+            <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: -0.3 }}>CaseAssist</span>
           </div>
           <div style={{ display: "flex", gap: 2 }}>
-            {[{ id: "home", label: "Home" }, { id: "claims", label: "Claims" }, { id: "advisor", label: "Advisor" }].map(t => (
+            {[{ id: "home", label: "Home" }, { id: "claims", label: "My Cases" }, { id: "advisor", label: "Advisor" }].map(t => (
               <button key={t.id} onClick={() => { if (t.id === "advisor") { setActive(null); setMsgs([]); setView("chat"); } else setView(t.id); }}
                 style={{ padding: "6px 16px", borderRadius: 980, fontSize: 13, fontWeight: 500, color: (view === t.id || (t.id === "advisor" && view === "chat" && !active)) ? "#fff" : "var(--g600)", background: (view === t.id || (t.id === "advisor" && view === "chat" && !active)) ? "var(--g900)" : "transparent", border: "none", cursor: "pointer", transition: "all .25s" }}>
                 {t.label}
@@ -190,56 +175,52 @@ export default function DashboardClient({ user }) {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "var(--g500)" }}>{user.name || user.email}</span>
-            <button onClick={() => setModal("new")} style={{ padding: "7px 18px", borderRadius: 980, fontSize: 13, fontWeight: 600, border: "none", background: "var(--blue)", color: "#fff", cursor: "pointer" }}>+ New Claim</button>
+            <button onClick={() => setModal("new")} style={{ padding: "7px 18px", borderRadius: 980, fontSize: 13, fontWeight: 600, border: "none", background: "var(--blue)", color: "#fff", cursor: "pointer" }}>+ New Case</button>
             <button onClick={() => signOut({ callbackUrl: "/login" })} style={{ padding: "7px 14px", borderRadius: 980, fontSize: 12, fontWeight: 500, border: ".5px solid var(--g300)", background: "transparent", color: "var(--g600)", cursor: "pointer" }}>Sign Out</button>
           </div>
         </nav>
 
-        {/* ══ HOME ══ */}
         {view === "home" && (
           <div style={{ flex: 1, overflowY: "auto" }}>
             <div className="fade-in" style={{ maxWidth: 840, margin: "0 auto", padding: "40px 24px 100px" }}>
               <div style={{ textAlign: "center", marginBottom: 48 }}>
                 <h1 style={{ fontSize: 52, fontWeight: 800, letterSpacing: -2.5, lineHeight: 1.02, marginBottom: 14 }}>Analyze claims.<br /><span style={{ color: "var(--g400)" }}>Predict rulings.</span></h1>
-                <p style={{ fontSize: 17, color: "var(--g500)", maxWidth: 460, margin: "0 auto", lineHeight: 1.55 }}>Upload documents, describe a scenario, or track a claim through adjudication — all cross-referenced against the WSIB Operational Policy Manual.</p>
+                <p style={{ fontSize: 17, color: "var(--g500)", maxWidth: 460, margin: "0 auto", lineHeight: 1.55 }}>Upload documents, describe a scenario, or track a case through adjudication — all cross-referenced against the WSIB Operational Policy Manual.</p>
                 <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 24 }}>
                   <button onClick={() => { setActive(null); setMsgs([]); setView("chat"); }} style={{ padding: "12px 28px", borderRadius: 980, fontSize: 15, fontWeight: 600, border: "none", background: "var(--blue)", color: "#fff", cursor: "pointer", boxShadow: "0 2px 12px rgba(0,113,227,.25)" }}>Start a conversation</button>
-                  <button onClick={() => setModal("new")} style={{ padding: "12px 28px", borderRadius: 980, fontSize: 15, fontWeight: 600, border: ".5px solid var(--g300)", background: "#fff", color: "var(--g900)", cursor: "pointer" }}>Create a claim</button>
+                  <button onClick={() => setModal("new")} style={{ padding: "12px 28px", borderRadius: 980, fontSize: 15, fontWeight: 600, border: ".5px solid var(--g300)", background: "#fff", color: "var(--g900)", cursor: "pointer" }}>Create a case</button>
                 </div>
               </div>
-              {claims.length > 0 && <div style={{ display: "flex", gap: 10, marginBottom: 28, flexWrap: "wrap" }}><div style={{ padding: "14px 20px", background: "#fff", borderRadius: 14, border: ".5px solid var(--g200)", minWidth: 110, textAlign: "center" }}><div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>{claims.length}</div><div style={{ fontSize: 11, color: "var(--g500)" }}>Total</div></div>{stageCounts.map(s => <div key={s.id} style={{ padding: "14px 20px", background: "#fff", borderRadius: 14, border: ".5px solid var(--g200)", minWidth: 110, textAlign: "center" }}><div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1, color: s.color }}>{s.count}</div><div style={{ fontSize: 11, color: "var(--g500)" }}>{s.label}</div></div>)}</div>}
-              {recentClaims.length > 0 && <><div style={{ fontSize: 13, fontWeight: 700, color: "var(--g400)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 14 }}>Recent Claims</div>{recentClaims.map(c => { const s = stageOf(c.stage); return <div key={c.id} onClick={() => openClaim(c)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", background: "#fff", borderRadius: 14, border: ".5px solid var(--g200)", cursor: "pointer", marginBottom: 6, transition: "all .25s" }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color }} /><div style={{ flex: 1 }}><span style={{ fontSize: 14, fontWeight: 700 }}>{c.claimNumber}</span><span style={{ fontSize: 12, color: "var(--g500)", marginLeft: 10 }}>{c.worker} · {c.employer}</span></div><span style={{ padding: "2px 10px", borderRadius: 980, fontSize: 11, fontWeight: 600, color: s.color, background: `${s.color}10`, border: `.5px solid ${s.color}30` }}>{s.label}</span><span style={{ fontSize: 11, color: "var(--g400)" }}>{fmt(c.injuryDate)}</span></div>; })}<div style={{ height: 24 }} /></>}
+              {claims.length > 0 && <div style={{ display: "flex", gap: 10, marginBottom: 28, flexWrap: "wrap" }}><div style={{ padding: "14px 20px", background: "#fff", borderRadius: 14, border: ".5px solid var(--g200)", minWidth: 110, textAlign: "center" }}><div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>{claims.length}</div><div style={{ fontSize: 11, color: "var(--g500)" }}>My Cases</div></div>{stageCounts.map(s => <div key={s.id} style={{ padding: "14px 20px", background: "#fff", borderRadius: 14, border: ".5px solid var(--g200)", minWidth: 110, textAlign: "center" }}><div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1, color: s.color }}>{s.count}</div><div style={{ fontSize: 11, color: "var(--g500)" }}>{s.label}</div></div>)}</div>}
+              {recentClaims.length > 0 && <><div style={{ fontSize: 13, fontWeight: 700, color: "var(--g400)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 14 }}>Recent Cases</div>{recentClaims.map(c => { const s = stageOf(c.stage); return <div key={c.id} onClick={() => openClaim(c)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", background: "#fff", borderRadius: 14, border: ".5px solid var(--g200)", cursor: "pointer", marginBottom: 6 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color }} /><div style={{ flex: 1 }}><span style={{ fontSize: 14, fontWeight: 700 }}>{c.claimNumber}</span><span style={{ fontSize: 12, color: "var(--g500)", marginLeft: 10 }}>{c.worker} · {c.employer}</span></div><span style={{ padding: "2px 10px", borderRadius: 980, fontSize: 11, fontWeight: 600, color: s.color, background: `${s.color}10`, border: `.5px solid ${s.color}30` }}>{s.label}</span><span style={{ fontSize: 11, color: "var(--g400)" }}>{fmt(c.injuryDate)}</span></div>; })}<div style={{ height: 24 }} /></>}
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--g400)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 14 }}>Quick Scenarios</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{scenarios.map((s, i) => <button key={i} onClick={() => { setActive(null); setMsgs([]); setView("chat"); setTimeout(() => send(s.t), 100); }} style={{ padding: "18px 20px", borderRadius: 16, background: "#fff", border: ".5px solid var(--g200)", cursor: "pointer", textAlign: "left" }}><div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{s.l}</div><div style={{ fontSize: 12, color: "var(--g500)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{s.t}</div></button>)}</div>
             </div>
           </div>
         )}
 
-        {/* ══ CLAIMS ══ */}
         {view === "claims" && (
           <div style={{ flex: 1, overflowY: "auto", padding: 24 }}><div className="fade-in" style={{ maxWidth: 900, margin: "0 auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>Claims</div></div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>My Cases</div></div>
             <div style={{ display: "flex", gap: 4, marginBottom: 14, flexWrap: "wrap" }}><button onClick={() => setFilter("all")} style={{ padding: "5px 14px", borderRadius: 980, fontSize: 12, fontWeight: 500, border: ".5px solid var(--g200)", cursor: "pointer", background: filter === "all" ? "var(--g900)" : "#fff", color: filter === "all" ? "#fff" : "var(--g500)" }}>All ({claims.length})</button>{STAGES.map(s => { const n = claims.filter(c => c.stage === s.id).length; return n > 0 ? <button key={s.id} onClick={() => setFilter(s.id)} style={{ padding: "5px 14px", borderRadius: 980, fontSize: 12, fontWeight: 500, border: ".5px solid var(--g200)", cursor: "pointer", background: filter === s.id ? "var(--g900)" : "#fff", color: filter === s.id ? "#fff" : "var(--g500)" }}>{s.label} ({n})</button> : null; })}</div>
-            {filtered.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px" }}><div style={{ fontSize: 18, fontWeight: 700, color: "var(--g700)", marginBottom: 6 }}>{claims.length === 0 ? "No claims yet" : "No matches"}</div><p style={{ fontSize: 14, color: "var(--g500)", marginBottom: 16 }}>{claims.length === 0 ? "Create your first claim." : "Try another filter."}</p></div> : filtered.map(c => { const s = stageOf(c.stage); return <div key={c.id} onClick={() => openClaim(c)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", background: "#fff", borderRadius: 14, border: ".5px solid var(--g200)", marginBottom: 6, cursor: "pointer", transition: "all .25s" }}><span style={{ width: 10, height: 10, borderRadius: "50%", background: s.color }} /><div style={{ flex: 1 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}><span style={{ fontSize: 15, fontWeight: 700 }}>{c.claimNumber}</span><span style={{ padding: "2px 10px", borderRadius: 980, fontSize: 11, fontWeight: 600, color: s.color, background: `${s.color}10`, border: `.5px solid ${s.color}30` }}>{s.label}</span></div><div style={{ fontSize: 13, color: "var(--g500)" }}>{c.worker} · {c.employer}</div></div><div style={{ textAlign: "right" }}><div style={{ fontSize: 12, color: "var(--g400)" }}>{fmt(c.injuryDate)}</div><div style={{ fontSize: 11, color: "var(--g500)" }}>{c.injuryType}</div></div><span style={{ color: "var(--g300)", fontSize: 18 }}>›</span></div>; })}
+            {filtered.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px" }}><div style={{ fontSize: 18, fontWeight: 700, color: "var(--g700)", marginBottom: 6 }}>{claims.length === 0 ? "No cases yet" : "No matches"}</div><p style={{ fontSize: 14, color: "var(--g500)", marginBottom: 16 }}>{claims.length === 0 ? "Create your first case to start tracking." : "Try another filter."}</p></div> : filtered.map(c => { const s = stageOf(c.stage); return <div key={c.id} onClick={() => openClaim(c)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", background: "#fff", borderRadius: 14, border: ".5px solid var(--g200)", marginBottom: 6, cursor: "pointer" }}><span style={{ width: 10, height: 10, borderRadius: "50%", background: s.color }} /><div style={{ flex: 1 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}><span style={{ fontSize: 15, fontWeight: 700 }}>{c.claimNumber}</span><span style={{ padding: "2px 10px", borderRadius: 980, fontSize: 11, fontWeight: 600, color: s.color, background: `${s.color}10`, border: `.5px solid ${s.color}30` }}>{s.label}</span></div><div style={{ fontSize: 13, color: "var(--g500)" }}>{c.worker} · {c.employer}</div></div><div style={{ textAlign: "right" }}><div style={{ fontSize: 12, color: "var(--g400)" }}>{fmt(c.injuryDate)}</div><div style={{ fontSize: 11, color: "var(--g500)" }}>{c.injuryType}</div></div><span style={{ color: "var(--g300)", fontSize: 18 }}>›</span></div>; })}
           </div></div>
         )}
 
-        {/* ══ DETAIL ══ */}
         {view === "detail" && active && (
           <div style={{ flex: 1, overflowY: "auto", padding: 24 }}><div className="fade-in" style={{ maxWidth: 900, margin: "0 auto" }}>
-            <button onClick={() => setView("claims")} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 500, color: "var(--blue)", background: "none", border: "none", cursor: "pointer", marginBottom: 14 }}>← All Claims</button>
+            <button onClick={() => setView("claims")} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 500, color: "var(--blue)", background: "none", border: "none", cursor: "pointer", marginBottom: 14 }}>← My Cases</button>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22, gap: 16, flexWrap: "wrap" }}>
               <div><div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -.8, marginBottom: 4 }}>{active.claimNumber}</div><div style={{ fontSize: 13, color: "var(--g500)", display: "flex", gap: 14, flexWrap: "wrap" }}><span>👤 {active.worker}</span><span>🏢 {active.employer}</span><span>📅 {fmt(active.injuryDate)}</span><span>📋 {active.injuryType}</span></div></div>
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => openChat(active)} style={{ padding: "7px 18px", borderRadius: 980, fontSize: 13, fontWeight: 600, border: "none", background: "var(--blue)", color: "#fff", cursor: "pointer" }}>Open Advisor</button>
                 <button onClick={() => setModal("stage")} style={{ padding: "7px 14px", borderRadius: 980, fontSize: 13, fontWeight: 600, border: ".5px solid var(--g300)", background: "transparent", color: "var(--g600)", cursor: "pointer" }}>Change Status</button>
-                <button onClick={() => { if (confirm("Delete?")) delClaim(active.id); }} style={{ padding: "7px 14px", borderRadius: 980, fontSize: 13, fontWeight: 600, border: ".5px solid var(--red-border)", background: "transparent", color: "var(--red)", cursor: "pointer" }}>Delete</button>
+                <button onClick={() => { if (confirm("Delete this case?")) delClaim(active.id); }} style={{ padding: "7px 14px", borderRadius: 980, fontSize: 13, fontWeight: 600, border: ".5px solid var(--red-border)", background: "transparent", color: "var(--red)", cursor: "pointer" }}>Delete</button>
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 22 }}>
               {[{ l: "Status", v: <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: stageOf(active.stage).color }} />{stageOf(active.stage).label}</span> }, { l: "Analyses", v: active.analyses?.length || 0 }, { l: "Documents", v: active.documents?.length || 0 }, { l: "Updated", v: <span style={{ fontSize: 13 }}>{fmtTime(active.updatedAt)}</span> }].map((d, i) => <div key={i} style={{ padding: 16, background: "#fff", borderRadius: 14, border: ".5px solid var(--g200)" }}><div style={{ fontSize: 10, fontWeight: 600, color: "var(--g400)", textTransform: "uppercase", letterSpacing: .8, marginBottom: 6 }}>{d.l}</div><div style={{ fontSize: 15, fontWeight: 600 }}>{d.v}</div></div>)}
             </div>
-            {/* Timeline */}
             <div style={{ marginBottom: 22 }}><div style={{ fontSize: 12, fontWeight: 700, color: "var(--g500)", textTransform: "uppercase", letterSpacing: .5, marginBottom: 10 }}>Timeline</div>
               {(active.timeline || []).slice().reverse().map((ev, i, arr) => <div key={i} style={{ display: "flex", gap: 12, position: "relative" }}>{i < arr.length - 1 && <div style={{ position: "absolute", left: 10, top: 22, bottom: 0, width: 1, background: "var(--g200)" }} />}<div style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, zIndex: 1, background: ev.type === "stage" ? "var(--blue-light)" : ev.type === "document" ? "var(--green-light)" : ev.type === "analysis" ? "rgba(255,149,0,.06)" : ev.type === "note" ? "rgba(175,82,222,.06)" : "var(--g200)", color: ev.type === "stage" ? "var(--blue)" : ev.type === "document" ? "var(--green)" : ev.type === "analysis" ? "#FF9500" : ev.type === "note" ? "#AF52DE" : "var(--g600)" }}>{ev.type === "created" ? "●" : ev.type === "stage" ? "→" : ev.type === "document" ? "📄" : ev.type === "analysis" ? "⚡" : "✎"}</div><div style={{ flex: 1, paddingBottom: 14 }}><div style={{ fontSize: 13, color: "var(--g700)", lineHeight: 1.4 }}>{ev.note}</div><div style={{ fontSize: 11, color: "var(--g400)", marginTop: 2 }}>{fmtTime(ev.date)}</div></div></div>)}
               <div style={{ display: "flex", gap: 6, marginTop: 8 }}><input value={noteIn} onChange={e => setNoteIn(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addNote(); }} placeholder="Add a note…" style={{ flex: 1, padding: "8px 14px", borderRadius: 10, border: ".5px solid var(--g200)", fontSize: 13, outline: "none", background: "#fff" }} /><button onClick={addNote} disabled={!noteIn.trim()} style={{ padding: "7px 14px", borderRadius: 980, fontSize: 13, fontWeight: 600, border: ".5px solid var(--g300)", background: "transparent", color: "var(--g600)", cursor: "pointer" }}>Add</button></div>
@@ -247,13 +228,12 @@ export default function DashboardClient({ user }) {
           </div></div>
         )}
 
-        {/* ══ CHAT ══ */}
         {view === "chat" && (<>
           <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px 130px" }}><div style={{ maxWidth: 720, margin: "0 auto" }}>
             {active && <div className="fade-in" style={{ padding: "12px 16px", background: "#fff", borderRadius: 12, border: ".5px solid var(--g200)", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><span style={{ fontSize: 14, fontWeight: 700 }}>{active.claimNumber}</span><span style={{ fontSize: 13, color: "var(--g500)", marginLeft: 12 }}>{active.worker} · {active.injuryType}</span></div><span style={{ padding: "2px 10px", borderRadius: 980, fontSize: 11, fontWeight: 600, color: stageOf(active.stage).color, background: `${stageOf(active.stage).color}10`, border: `.5px solid ${stageOf(active.stage).color}30` }}>{stageOf(active.stage).label}</span></div>}
-            {msgs.length === 0 && <div className="fade-in" style={{ padding: "32px 0" }}><div style={{ fontSize: 32, fontWeight: 800, letterSpacing: -1.2, marginBottom: 8 }}>{active ? `Analyze ${active.claimNumber}` : "Ask anything."}</div><div style={{ fontSize: 15, color: "var(--g500)", marginBottom: 20, maxWidth: 460, lineHeight: 1.55 }}>{active ? "Upload documents or ask questions. Analysis is saved to this claim." : "Describe a scenario, upload documents, or ask a policy question."}</div>{active && <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>{quickPrompts.map((q, i) => <button key={i} onClick={() => send(q)} style={{ padding: "7px 16px", borderRadius: 980, fontSize: 12, fontWeight: 500, color: "var(--g600)", background: "#fff", border: ".5px solid var(--g200)", cursor: "pointer" }}>{q}</button>)}</div>}{!active && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, maxWidth: 560 }}>{scenarios.map((s, i) => <button key={i} onClick={() => send(s.t)} style={{ padding: "18px 20px", borderRadius: 16, background: "#fff", border: ".5px solid var(--g200)", cursor: "pointer", textAlign: "left" }}><div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{s.l}</div><div style={{ fontSize: 12, color: "var(--g500)", lineHeight: 1.4 }}>{s.t.slice(0, 90)}…</div></button>)}</div>}</div>}
-            {msgs.map((m, i) => <div key={i} style={{ marginBottom: 28, display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start", animation: "fadeIn .35s cubic-bezier(.25,.1,.25,1) both" }}><div style={{ fontSize: 11, fontWeight: 600, color: "var(--g400)", letterSpacing: .5, textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: m.role === "user" ? "var(--g900)" : "var(--blue)" }} />{m.role === "user" ? "You" : "ClaimLens"}</div>{m.files?.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8, justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>{m.files.map((f, j) => <span key={j} style={{ padding: "5px 12px", borderRadius: 980, fontSize: 12, fontWeight: 500, color: "var(--blue)", background: "var(--blue-light)", border: ".5px solid var(--blue-border)" }}>{f}</span>)}</div>}{m.role === "user" ? <div style={{ maxWidth: "70%", padding: "14px 20px", borderRadius: "20px 20px 6px 20px", background: "var(--g900)", color: "#fff", fontSize: 15, lineHeight: 1.55 }}>{m.display || m.content}</div> : <div style={{ width: "100%" }}><Msg text={m.content} /></div>}</div>)}
-            {loading && <div style={{ marginBottom: 28 }}><div style={{ fontSize: 11, fontWeight: 600, color: "var(--g400)", letterSpacing: .5, textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--blue)" }} />ClaimLens</div><div style={{ display: "flex", gap: 6, alignItems: "center" }}>{[0, 1, 2].map(d => <div key={d} style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--blue)", animation: `pulse 1.5s ease infinite ${d * .2}s` }} />)}<span style={{ marginLeft: 8, fontSize: 13, color: "var(--g400)" }}>Reviewing…</span></div></div>}
+            {msgs.length === 0 && <div className="fade-in" style={{ padding: "32px 0" }}><div style={{ fontSize: 32, fontWeight: 800, letterSpacing: -1.2, marginBottom: 8 }}>{active ? `Analyze ${active.claimNumber}` : "Ask anything."}</div><div style={{ fontSize: 15, color: "var(--g500)", marginBottom: 20, maxWidth: 460, lineHeight: 1.55 }}>{active ? "Upload documents or ask questions. Analysis is saved to this case." : "Describe a scenario, upload documents, or ask a policy question."}</div>{active && <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>{quickPrompts.map((q, i) => <button key={i} onClick={() => send(q)} style={{ padding: "7px 16px", borderRadius: 980, fontSize: 12, fontWeight: 500, color: "var(--g600)", background: "#fff", border: ".5px solid var(--g200)", cursor: "pointer" }}>{q}</button>)}</div>}{!active && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, maxWidth: 560 }}>{scenarios.map((s, i) => <button key={i} onClick={() => send(s.t)} style={{ padding: "18px 20px", borderRadius: 16, background: "#fff", border: ".5px solid var(--g200)", cursor: "pointer", textAlign: "left" }}><div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{s.l}</div><div style={{ fontSize: 12, color: "var(--g500)", lineHeight: 1.4 }}>{s.t.slice(0, 90)}…</div></button>)}</div>}</div>}
+            {msgs.map((m, i) => <div key={i} style={{ marginBottom: 28, display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start", animation: "fadeIn .35s cubic-bezier(.25,.1,.25,1) both" }}><div style={{ fontSize: 11, fontWeight: 600, color: "var(--g400)", letterSpacing: .5, textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: m.role === "user" ? "var(--g900)" : "var(--blue)" }} />{m.role === "user" ? "You" : "CaseAssist"}</div>{m.files?.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8, justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>{m.files.map((f, j) => <span key={j} style={{ padding: "5px 12px", borderRadius: 980, fontSize: 12, fontWeight: 500, color: "var(--blue)", background: "var(--blue-light)", border: ".5px solid var(--blue-border)" }}>{f}</span>)}</div>}{m.role === "user" ? <div style={{ maxWidth: "70%", padding: "14px 20px", borderRadius: "20px 20px 6px 20px", background: "var(--g900)", color: "#fff", fontSize: 15, lineHeight: 1.55 }}>{m.display || m.content}</div> : <div style={{ width: "100%" }}><Msg text={m.content} /></div>}</div>)}
+            {loading && <div style={{ marginBottom: 28 }}><div style={{ fontSize: 11, fontWeight: 600, color: "var(--g400)", letterSpacing: .5, textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--blue)" }} />CaseAssist</div><div style={{ display: "flex", gap: 6, alignItems: "center" }}>{[0, 1, 2].map(d => <div key={d} style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--blue)", animation: `pulse 1.5s ease infinite ${d * .2}s` }} />)}<span style={{ marginLeft: 8, fontSize: 13, color: "var(--g400)" }}>Reviewing…</span></div></div>}
             <div ref={endRef} />
           </div></div>
           <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "0 24px 20px", background: "linear-gradient(to top, var(--bg) 60%, transparent)", pointerEvents: "none", zIndex: 50 }}><div style={{ maxWidth: 720, margin: "0 auto", pointerEvents: "auto" }}>
@@ -268,10 +248,9 @@ export default function DashboardClient({ user }) {
           </div></div>
         </>)}
 
-        {/* ══ MODALS ══ */}
         {modal === "new" && <div onClick={e => { if (e.target === e.currentTarget) setModal(null); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.25)", backdropFilter: "blur(10px)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ background: "#fff", borderRadius: 20, padding: 28, width: "100%", maxWidth: 480, boxShadow: "0 20px 60px rgba(0,0,0,.15)", animation: "scaleIn .3s cubic-bezier(.25,.1,.25,1)" }}>
-          <h3 style={{ fontSize: 20, fontWeight: 700, letterSpacing: -.5, marginBottom: 16 }}>New Claim</h3>
-          {[{ k: "claimNumber", l: "Claim Number", p: "Auto-generated if blank" }, { k: "worker", l: "Worker Name / Initials", p: "e.g. J. Smith" }, { k: "employer", l: "Employer", p: "e.g. Acme Construction" }].map(f => <div key={f.k}><label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--g500)", marginBottom: 4, marginTop: 12 }}>{f.l}</label><input value={nf[f.k]} onChange={e => setNf(p => ({ ...p, [f.k]: e.target.value }))} placeholder={f.p} style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: ".5px solid var(--g200)", fontSize: 14, outline: "none", background: "var(--g50)", fontFamily: "inherit" }} /></div>)}
+          <h3 style={{ fontSize: 20, fontWeight: 700, letterSpacing: -.5, marginBottom: 16 }}>New Case</h3>
+          {[{ k: "claimNumber", l: "Case Number", p: "Auto-generated if blank" }, { k: "worker", l: "Worker Name / Initials", p: "e.g. J. Smith" }, { k: "employer", l: "Employer", p: "e.g. Acme Construction" }].map(f => <div key={f.k}><label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--g500)", marginBottom: 4, marginTop: 12 }}>{f.l}</label><input value={nf[f.k]} onChange={e => setNf(p => ({ ...p, [f.k]: e.target.value }))} placeholder={f.p} style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: ".5px solid var(--g200)", fontSize: 14, outline: "none", background: "var(--g50)", fontFamily: "inherit" }} /></div>)}
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--g500)", marginBottom: 4, marginTop: 12 }}>Date of Injury</label><input type="date" value={nf.injuryDate} onChange={e => setNf(p => ({ ...p, injuryDate: e.target.value }))} style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: ".5px solid var(--g200)", fontSize: 14, outline: "none", background: "var(--g50)", fontFamily: "inherit" }} />
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--g500)", marginBottom: 4, marginTop: 12 }}>Injury Type</label><select value={nf.injuryType} onChange={e => setNf(p => ({ ...p, injuryType: e.target.value }))} style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: ".5px solid var(--g200)", fontSize: 14, outline: "none", background: "var(--g50)", fontFamily: "inherit" }}><option>Acute Injury</option><option>Occupational Disease</option><option>Traumatic Mental Stress</option><option>Chronic Mental Stress</option><option>PTSD (First Responder)</option><option>Recurrence</option><option>Aggravation of Pre-existing</option></select>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--g500)", marginBottom: 4, marginTop: 12 }}>Description</label><textarea value={nf.description} onChange={e => setNf(p => ({ ...p, description: e.target.value }))} placeholder="Brief injury description…" rows={3} style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: ".5px solid var(--g200)", fontSize: 14, outline: "none", background: "var(--g50)", fontFamily: "inherit", resize: "none" }} />
