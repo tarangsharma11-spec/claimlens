@@ -2,8 +2,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata = {
-  title: "ClaimLens — Workers' Compensation Claims Intelligence",
-  description: "AI-powered claims analysis against the WSIB Operational Policy Manual",
+  title: "CaseAssist — Workers' Compensation Claims Intelligence",
+  description: "AI-powered claims analysis against the WSIB Operational Policy Manual. Ruling predictions, compliance checks, and return-to-work guidance.",
 };
 
 export default function RootLayout({ children }) {
