@@ -187,3 +187,4 @@ User gets invite code from admin
 - [ ] Add role-based views (lawyer sees only their claims, admin sees all)
 - [ ] Add file upload to Vercel Blob storage for document persistence
 - [ ] Custom domain setup in Vercel Dashboard → Settings → Domains
+# claimlens
