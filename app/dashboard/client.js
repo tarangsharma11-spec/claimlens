@@ -288,10 +288,35 @@ const INTAKE_STEPS=[
 ];
 
 
+/* === Medical Provider Tracking === */
+const PROVIDER_TYPES=["Family Doctor","Emergency","Specialist","Surgeon","Physiotherapist","Chiropractor","Psychologist","Imaging Clinic","Pharmacy","Other"];
+
+/* === Letter Templates === */
+const LETTER_TEMPLATES=[
+{id:"representation",label:"Letter of Representation",desc:"Notify WSIB that you represent the injured worker",prompt:"Generate a formal Letter of Representation for this WSIB claim. Include: lawyer/firm name placeholder, worker name, employer name, claim number, injury date, and a statement that all future correspondence should be directed to the representative. Format as a professional letter."},
+{id:"records_request",label:"Medical Records Request",desc:"Request records from a treating physician",prompt:"Generate a Medical Records Request letter for this WSIB claim. Include: provider name placeholder, worker name, date of injury, claim number, request for all clinical notes, diagnostic imaging, treatment plans, and functional abilities information from date of injury to present. Reference WSIB's authority to share information under the WSIA."},
+{id:"intent_object",label:"Intent to Object",desc:"Notify WSIB you disagree with a decision",prompt:"Generate an Intent to Object letter for this WSIB claim that has been denied. Include: worker name, claim number, date of WSIB decision, specific grounds for objection, request for reconsideration, and statement preserving appeal rights. Reference OPM 11-01-13 benefit of doubt."},
+{id:"employer_response",label:"Employer Response Request",desc:"Request information from the employer",prompt:"Generate a letter requesting information from the employer regarding this WSIB claim. Include: employer name, worker name, claim number, request for job description, modified duties availability, witness statements, and incident investigation report."},
+{id:"faf_request",label:"FAF Update Request",desc:"Request updated Functional Abilities Form",prompt:"Generate a letter to the treating physician requesting an updated Functional Abilities Form (FAF) for this WSIB claim. Include: worker name, claim number, current treatment status, and request for updated physical restrictions and return-to-work recommendations."}
+];
+
+/* === Claim Valuation Fields === */
+const VALUATION_FIELDS=[
+{id:"medicalToDate",label:"Medical Costs to Date",desc:"Total medical expenses incurred"},
+{id:"medicalFuture",label:"Projected Future Medical",desc:"Estimated remaining treatment costs"},
+{id:"loeToDate",label:"LOE Benefits to Date",desc:"Loss of earnings paid so far"},
+{id:"loeFuture",label:"Projected Future LOE",desc:"Estimated remaining wage loss"},
+{id:"nel",label:"NEL Award Estimate",desc:"Non-Economic Loss lump sum"},
+{id:"legalFees",label:"Legal Fees",desc:"Contingency or hourly fees"},
+{id:"disbursements",label:"Disbursements",desc:"Filing fees, expert reports, travel"},
+{id:"otherCosts",label:"Other Costs",desc:"Any additional claim-related costs"}
+];
+
+
 /* ═══════════════════════════════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════════════════════════════ */
-export default function DashboardClient({user}){const[view,setView]=useState("home");const[claims,setClaims]=useState([]);const[active,setActive]=useState(null);const[msgs,setMsgs]=useState([]);const[input,setInput]=useState("");const[loading,setLoading]=useState(false);const[files,setFiles]=useState([]);const[fc,setFc]=useState({});const[modal,setModal]=useState(null);const[nf,setNf]=useState({claimNumber:"",worker:"",employer:"",injuryDate:"",injuryType:"Acute Injury",description:""});const[noteIn,setNoteIn]=useState("");const[filter,setFilter]=useState("all");const[searchQ,setSearchQ]=useState("");const[detailTab,setDetailTab]=useState("overview");const[showCalc,setShowCalc]=useState(false);const[showAnalytics,setShowAnalytics]=useState(false);const[showTemplates,setShowTemplates]=useState(false);const[bulkSelect,setBulkSelect]=useState([]);const[showNotifs,setShowNotifs]=useState(false);const[showGlossary,setShowGlossary]=useState(false);const[glossarySearch,setGlossarySearch]=useState("");const[homeTab,setHomeTab]=useState("overview");const[commLog,setCommLog]=useState({to:"",method:"email",date:"",note:""});const fRef=useRef(null);const endRef=useRef(null);const taRef=useRef(null);
+export default function DashboardClient({user}){const[view,setView]=useState("home");const[claims,setClaims]=useState([]);const[active,setActive]=useState(null);const[msgs,setMsgs]=useState([]);const[input,setInput]=useState("");const[loading,setLoading]=useState(false);const[files,setFiles]=useState([]);const[fc,setFc]=useState({});const[modal,setModal]=useState(null);const[nf,setNf]=useState({claimNumber:"",worker:"",employer:"",injuryDate:"",injuryType:"Acute Injury",description:""});const[noteIn,setNoteIn]=useState("");const[filter,setFilter]=useState("all");const[searchQ,setSearchQ]=useState("");const[detailTab,setDetailTab]=useState("overview");const[showCalc,setShowCalc]=useState(false);const[showAnalytics,setShowAnalytics]=useState(false);const[showTemplates,setShowTemplates]=useState(false);const[bulkSelect,setBulkSelect]=useState([]);const[showNotifs,setShowNotifs]=useState(false);const[showGlossary,setShowGlossary]=useState(false);const[glossarySearch,setGlossarySearch]=useState("");const[homeTab,setHomeTab]=useState("overview");const[commLog,setCommLog]=useState({to:"",method:"email",date:"",note:""});const[taskInput,setTaskInput]=useState("");const[valuation,setValuation]=useState({});const[providerForm,setProviderForm]=useState({name:"",type:"Family Doctor",phone:"",status:"requested"});const fRef=useRef(null);const endRef=useRef(null);const taRef=useRef(null);
 
 useEffect(()=>{const handler=(e)=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT")return;if(e.key==="n"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();setModal("new")}if(e.key==="s"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();nav("claims")}if(e.key==="a"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();setActive(null);setMsgs([]);nav("chat")}if(e.key==="h"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();nav("home")}if(e.key==="Escape"){setModal(null);setShowCalc(false);setShowAnalytics(false);setShowTemplates(false)}};window.addEventListener("keydown",handler);return()=>window.removeEventListener("keydown",handler)},[]);
 useEffect(()=>{setClaims(loadClaims(user.email))},[user.email]);
@@ -406,7 +431,7 @@ return(<><style jsx global>{`
   </div>
   <div style={{overflow:"hidden",minWidth:0}}>
     <div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Quick Tools</div>
-    {[{label:"Case Templates",desc:"Start from a template",onClick:()=>setShowTemplates(true)},{label:"Benefit Calculator",desc:"Estimate LOE & NEL",onClick:()=>setShowCalc(true)},{label:"Analytics Dashboard",desc:"Portfolio insights",onClick:()=>setShowAnalytics(true)}].map((t,i)=>(
+    {[{label:"Case Templates",desc:"Start from a template",onClick:()=>setShowTemplates(true)},{label:"Benefit Calculator",desc:"Estimate LOE & NEL",onClick:()=>setShowCalc(true)},{label:"Analytics Dashboard",desc:"Portfolio insights",onClick:()=>setShowAnalytics(true)},{label:"Conflict Check",desc:"Search all cases for conflicts",onClick:()=>{const name=prompt("Enter a name to check for conflicts (worker, employer, or provider):");if(name){const q=name.toLowerCase();const matches=claims.filter(cl=>[cl.worker,cl.employer,...(cl.providers||[]).map(p=>p.name)].some(n=>(n||"").toLowerCase().includes(q)));if(matches.length>0)alert("Potential conflicts found in "+matches.length+" case(s): "+matches.map(m=>m.claimNumber+" ("+m.worker+" vs "+m.employer+")").join(", "));else alert("No conflicts found for: "+name)}}}].map((t,i)=>(
       <button key={i} onClick={t.onClick} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",boxShadow:"0 1px 3px rgba(0,0,0,.03)",cursor:"pointer",textAlign:"left",width:"100%",marginBottom:6}}>
         <div><div style={{fontSize:13,fontWeight:600,color:"var(--g900)"}}>{t.label}</div><div style={{fontSize:11,color:"var(--g500)"}}>{t.desc}</div></div>
       </button>
@@ -485,7 +510,7 @@ return(<><style jsx global>{`
 <div style={{padding:"12px 16px",background:"rgba(0,113,227,.04)",border:".5px solid rgba(0,113,227,.12)",borderRadius:12,marginBottom:16,display:"flex",alignItems:"center",gap:12}}><div style={{width:32,height:32,borderRadius:8,background:stageOf(active.stage).color,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:"#fff",fontSize:14,fontWeight:700}}>{stageOf(active.stage).icon}</span></div><div style={{minWidth:0}}><div style={{fontSize:14,fontWeight:600,color:"var(--g900)"}}>Status: {stageOf(active.stage).label}</div><div style={{fontSize:12,color:"var(--g600)",marginTop:1}}>{stageOf(active.stage).guidance}</div></div></div>
 
 {/* Detail tabs */}
-<div style={{display:"flex",gap:2,padding:3,background:"var(--g200)",borderRadius:10,marginBottom:16}}>{[{id:"overview",label:"Overview"},{id:"documents",label:`Documents (${active.documents?.length||0})`},{id:"timeline",label:"Timeline"},{id:"comms",label:"Comms"},{id:"appeal",label:"Appeal"}].map(t=><button key={t.id} onClick={()=>setDetailTab(t.id)} style={{flex:1,padding:"7px 0",borderRadius:8,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",background:detailTab===t.id?"#fff":"transparent",color:detailTab===t.id?"var(--g900)":"var(--g500)",boxShadow:detailTab===t.id?"0 1px 3px rgba(0,0,0,.06)":"none"}}>{t.label}</button>)}</div>
+<div style={{display:"flex",gap:2,padding:3,background:"var(--g200)",borderRadius:10,marginBottom:16}}>{[{id:"overview",label:"Overview"},{id:"documents",label:`Documents (${active.documents?.length||0})`},{id:"timeline",label:"Timeline"},{id:"comms",label:"Comms"},{id:"appeal",label:"Appeal"},{id:"tasks",label:"Tasks"},{id:"providers",label:"Providers"},{id:"valuation",label:"Value"}].map(t=><button key={t.id} onClick={()=>setDetailTab(t.id)} style={{flex:1,padding:"7px 0",borderRadius:8,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",background:detailTab===t.id?"#fff":"transparent",color:detailTab===t.id?"var(--g900)":"var(--g500)",boxShadow:detailTab===t.id?"0 1px 3px rgba(0,0,0,.06)":"none"}}>{t.label}</button>)}</div>
 
 {detailTab==="overview"&&<>
 {/* RTW Progress */}
@@ -542,6 +567,59 @@ return(<><style jsx global>{`
 <div key={i} style={{padding:"12px 14px",background:"#fff",borderRadius:12,border:"1px solid var(--g200)"}}><div style={{fontSize:13,fontWeight:600,color:"var(--g800)"}}>{d.label}</div><div style={{fontSize:12,fontWeight:700,color:"var(--blue)",marginTop:2}}>{d.dl}</div><div style={{fontSize:11,color:"var(--g500)"}}>{d.desc}</div></div>))}
 </div></div>
 </>}
+
+{detailTab==="tasks"&&<>
+<div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>Task Checklist</div>
+<div style={{display:"flex",gap:6,marginBottom:12}}>
+<input value={taskInput} onChange={e=>setTaskInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&taskInput.trim()){const cl={...active};cl.tasks=[...(cl.tasks||[]),{id:Date.now(),text:taskInput.trim(),done:false,created:new Date().toISOString()}];saveClaim(cl);setTaskInput("")}}} placeholder="Add a task..." style={{flex:1,padding:"10px 14px",borderRadius:10,border:"1px solid var(--g200)",fontSize:13,outline:"none",background:"#fff"}}/>
+<button onClick={()=>{if(taskInput.trim()){const cl={...active};cl.tasks=[...(cl.tasks||[]),{id:Date.now(),text:taskInput.trim(),done:false,created:new Date().toISOString()}];saveClaim(cl);setTaskInput("")}}} style={{padding:"10px 18px",borderRadius:10,fontSize:13,fontWeight:600,border:"none",background:"var(--blue)",color:"#fff",cursor:"pointer"}}>Add</button>
+</div>
+{(active.tasks||[]).filter(t=>!t.done).map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fff",borderRadius:10,border:"1px solid var(--g200)",marginBottom:4,cursor:"pointer"}} onClick={()=>{const cl={...active};cl.tasks=cl.tasks.map(x=>x.id===t.id?{...x,done:true}:x);saveClaim(cl)}}><div style={{width:18,height:18,borderRadius:5,border:"2px solid var(--g300)",flexShrink:0}}/><span style={{fontSize:13,color:"var(--g800)"}}>{t.text}</span><button onClick={e=>{e.stopPropagation();const cl={...active};cl.tasks=cl.tasks.filter(x=>x.id!==t.id);saveClaim(cl)}} style={{marginLeft:"auto",background:"none",border:"none",color:"var(--g400)",cursor:"pointer",fontSize:14}}>x</button></div>)}
+{(active.tasks||[]).filter(t=>t.done).length>0&&<><div style={{fontSize:11,fontWeight:600,color:"var(--g400)",marginTop:12,marginBottom:6}}>Completed</div>{(active.tasks||[]).filter(t=>t.done).map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",background:"var(--g50)",borderRadius:10,marginBottom:3}}><div style={{width:18,height:18,borderRadius:5,background:"var(--green)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:"#fff",fontSize:10,fontWeight:800}}>{"✓"}</span></div><span style={{fontSize:12,color:"var(--g400)",textDecoration:"line-through"}}>{t.text}</span></div>)}</>}
+{(!active.tasks||active.tasks.length===0)&&<div style={{padding:32,textAlign:"center",color:"var(--g400)",fontSize:13}}>No tasks yet. Add follow-ups, reminders, and to-dos for this case.</div>}
+<div style={{marginTop:16,fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Generate Letters</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+{LETTER_TEMPLATES.map(lt=><button key={lt.id} onClick={()=>{nav("chat");setTimeout(()=>send(lt.prompt),100)}} style={{padding:"12px 14px",background:"#fff",borderRadius:10,border:"1px solid var(--g200)",cursor:"pointer",textAlign:"left"}}><div style={{fontSize:13,fontWeight:600,color:"var(--g800)"}}>{lt.label}</div><div style={{fontSize:11,color:"var(--g500)",marginTop:2}}>{lt.desc}</div></button>)}
+</div>
+</>}
+
+{detailTab==="providers"&&<>
+<div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>Medical Providers</div>
+<div style={{padding:"14px 16px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",marginBottom:12}}>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Provider Name</label><input value={providerForm.name} onChange={e=>setProviderForm(p=>({...p,name:e.target.value}))} placeholder="Dr. Smith, ActiveCare Physio..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none"}}/></div>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Type</label><select value={providerForm.type} onChange={e=>setProviderForm(p=>({...p,type:e.target.value}))} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none",background:"#fff"}}>{PROVIDER_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Phone/Contact</label><input value={providerForm.phone} onChange={e=>setProviderForm(p=>({...p,phone:e.target.value}))} placeholder="(555) 123-4567" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none"}}/></div>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Records Status</label><select value={providerForm.status} onChange={e=>setProviderForm(p=>({...p,status:e.target.value}))} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none",background:"#fff"}}><option value="requested">Requested</option><option value="received">Received</option><option value="pending">Pending</option><option value="none">Not Requested</option></select></div>
+</div>
+<button onClick={()=>{if(providerForm.name){const cl={...active};cl.providers=[...(cl.providers||[]),{...providerForm,id:Date.now()}];saveClaim(cl);setProviderForm({name:"",type:"Family Doctor",phone:"",status:"requested"})}}} style={{padding:"8px 16px",borderRadius:980,fontSize:13,fontWeight:600,border:"none",background:"var(--blue)",color:"#fff",cursor:"pointer"}}>Add Provider</button>
+</div>
+{(active.providers||[]).map(p=><div key={p.id} style={{padding:"12px 16px",background:"#fff",borderRadius:12,border:"1px solid var(--g200)",marginBottom:6,display:"flex",alignItems:"center",justifyContent:"space-between"}}><div><div style={{fontSize:14,fontWeight:600,color:"var(--g800)"}}>{p.name}</div><div style={{fontSize:12,color:"var(--g500)"}}>{p.type}{p.phone?" \u00B7 "+p.phone:""}</div></div><span style={{padding:"3px 10px",borderRadius:980,fontSize:10,fontWeight:600,color:p.status==="received"?"var(--green)":p.status==="requested"?"var(--orange)":"var(--g500)",background:p.status==="received"?"var(--green-light)":p.status==="requested"?"rgba(255,149,0,.06)":"var(--g50)",border:`1px solid ${p.status==="received"?"rgba(52,199,89,.15)":p.status==="requested"?"rgba(255,149,0,.12)":"var(--g200)"}`}}>{p.status}</span></div>)}
+{(!active.providers||active.providers.length===0)&&<div style={{padding:32,textAlign:"center",color:"var(--g400)",fontSize:13}}>No providers tracked. Add treating physicians, specialists, and clinics involved in this claim.</div>}
+</>}
+
+{detailTab==="valuation"&&<>
+<div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>Claim Valuation</div>
+<div style={{padding:"18px 20px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",marginBottom:12}}>
+{VALUATION_FIELDS.map(f=><div key={f.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid var(--g100)"}}><div><div style={{fontSize:13,fontWeight:600,color:"var(--g800)"}}>{f.label}</div><div style={{fontSize:11,color:"var(--g500)"}}>{f.desc}</div></div><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:13,color:"var(--g400)"}}>$</span><input value={valuation[f.id]||""} onChange={e=>{const v={...valuation,[f.id]:e.target.value};setValuation(v);const cl={...active};cl.valuation=v;saveClaim(cl)}} placeholder="0" style={{width:100,padding:"6px 10px",borderRadius:8,border:"1px solid var(--g200)",fontSize:14,fontWeight:600,outline:"none",textAlign:"right"}}/></div></div>)}
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0 4px",borderTop:"2px solid var(--g200)",marginTop:8}}>
+<div style={{fontSize:15,fontWeight:700,color:"var(--g900)"}}>Total Claim Value</div>
+<div style={{fontSize:22,fontWeight:800,color:"var(--blue)"}}>${Object.values(valuation).reduce((s,v)=>s+(parseFloat(v)||0),0).toLocaleString()}</div>
+</div>
+</div>
+<button onClick={()=>{nav("chat");setTimeout(()=>send("Based on the evidence in this claim, provide a detailed claim valuation estimate. Break down: estimated medical costs (past and future), LOE calculations at 85% of net earnings, NEL range based on injury type and severity, projected legal costs, and total claim value range. Also factor in the likelihood of appeal costs if the claim is denied."),100)}} style={{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--g200)",background:"#fff",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:12}}>
+<div style={{width:32,height:32,borderRadius:8,background:"var(--blue-light)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:14,fontWeight:700,color:"var(--blue)"}}>AI</span></div>
+<div><div style={{fontSize:14,fontWeight:600,color:"var(--g900)"}}>AI Valuation Estimate</div><div style={{fontSize:12,color:"var(--g500)"}}>Get an AI-generated claim valuation based on injury type and evidence</div></div>
+</button>
+<div style={{marginTop:16}}><button onClick={()=>{nav("chat");setTimeout(()=>send("Generate a comprehensive demand package for this claim. Include: 1) Executive summary of the claim 2) Detailed medical chronology 3) All applicable OPM policy references 4) Benefit calculations (LOE at 85% net, NEL estimate) 5) Total claim valuation 6) Supporting arguments for entitlement 7) Response to any potential counter-arguments. Format as a formal demand brief suitable for WSIB or WSIAT submission."),100)}} style={{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--blue-border)",background:"var(--blue-light)",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:12}}>
+<div style={{width:32,height:32,borderRadius:8,background:"var(--blue)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:12,fontWeight:700,color:"#fff"}}>DP</span></div>
+<div><div style={{fontSize:14,fontWeight:600,color:"var(--blue)"}}>Build Demand Package</div><div style={{fontSize:12,color:"var(--g600)"}}>AI-generated comprehensive demand brief with all case evidence</div></div>
+</button></div>
+</>}
+
+
 
 
 </div></div>)}
