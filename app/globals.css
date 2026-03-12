@@ -34,6 +34,7 @@ body {
   color: var(--g900);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 ::-webkit-scrollbar {
@@ -55,6 +56,77 @@ body {
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.8; }
+}
+
 .fade-in {
   animation: fadeIn 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+
+/* ── Mobile responsive overrides for dashboard ── */
+@media (max-width: 768px) {
+  /* Nav */
+  nav {
+    padding: 0 12px !important;
+    gap: 4px;
+  }
+  nav > div:first-child span {
+    display: none;
+  }
+
+  /* Home hero */
+  .fade-in h1 {
+    font-size: 32px !important;
+    letter-spacing: -1.5px !important;
+  }
+
+  /* Stat cards */
+  div[style*="grid-template-columns: 1fr 1fr 1fr 1fr"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Scenario grid */
+  div[style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Input bar */
+  div[style*="position: fixed"][style*="bottom: 0"] {
+    padding: 0 12px 12px !important;
+  }
+
+  /* Chat bubbles */
+  div[style*="maxWidth: 720px"],
+  div[style*="maxWidth: 840px"],
+  div[style*="maxWidth: 900px"],
+  div[style*="max-width: 720px"],
+  div[style*="max-width: 840px"],
+  div[style*="max-width: 900px"] {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Modals */
+  div[style*="maxWidth: 480px"],
+  div[style*="maxWidth: 400px"],
+  div[style*="max-width: 480px"],
+  div[style*="max-width: 400px"] {
+    margin: 0 12px;
+    max-width: calc(100% - 24px) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Even smaller screens */
+  nav button {
+    padding: 5px 10px !important;
+    font-size: 12px !important;
+  }
+
+  /* Stage progress on detail page */
+  div[style*="margin: 16px 0 20px"] span {
+    font-size: 9px !important;
+  }
 }

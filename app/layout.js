@@ -6,6 +6,12 @@ export const metadata = {
   description: "AI-powered claims analysis against the WSIB Operational Policy Manual. Ruling predictions, compliance checks, and return-to-work guidance.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
