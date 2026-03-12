@@ -313,10 +313,39 @@ const VALUATION_FIELDS=[
 ];
 
 
+/* === Risk Assessment Score === */
+function getRiskScore(claim){if(!claim)return null;let risk=0;const factors=[];
+const inj=claim.injuryDate&&claim.injuryDate!=="\u2014"?new Date(claim.injuryDate):null;
+if(inj){const days=Math.floor((Date.now()-inj)/864e5);if(days>90)risk+=3;else if(days>30)risk+=1;factors.push({label:"Days open: "+days,impact:days>90?"high":days>30?"medium":"low"})}
+const flags=getRedFlags(claim);risk+=flags.filter(f=>f.severity==="critical").length*4;risk+=flags.filter(f=>f.severity==="high").length*2;risk+=flags.filter(f=>f.severity==="medium").length;
+if(flags.length>0)factors.push({label:flags.length+" red flag"+(flags.length>1?"s":""),impact:flags.some(f=>f.severity==="critical")?"high":"medium"});
+if(/mental|ptsd|chronic/i.test(claim.injuryType||""))risk+=2;
+if(!claim.documents?.length)risk+=2;
+if(!claim.analyses?.length)risk+=1;
+const dl=getDeadlines(claim);const overdue=dl.filter(d=>d.status==="overdue");risk+=overdue.length*2;
+if(overdue.length)factors.push({label:overdue.length+" overdue deadline"+(overdue.length>1?"s":""),impact:"high"});
+const level=risk>=10?"Critical":risk>=6?"High":risk>=3?"Medium":"Low";
+const color=risk>=10?"var(--red)":risk>=6?"var(--orange)":risk>=3?"var(--blue)":"var(--green)";
+return{score:risk,level,color,factors}}
+
+/* === Three-Point Contact === */
+function getThreePointContact(claim){return{
+worker:{label:"Injured Worker",contacted:claim.threePoint?.worker||false,date:claim.threePoint?.workerDate||null},
+employer:{label:"Employer",contacted:claim.threePoint?.employer||false,date:claim.threePoint?.employerDate||null},
+medical:{label:"Medical Provider",contacted:claim.threePoint?.medical||false,date:claim.threePoint?.medicalDate||null}
+}}
+
+/* === AWW Calculator === */
+function calcAWW(grossWeekly){if(!grossWeekly||grossWeekly<=0)return null;
+const cpp=grossWeekly*0.0595;const ei=grossWeekly*0.0229;const fedTax=grossWeekly*0.15;const provTax=grossWeekly*0.0505;
+const netWeekly=grossWeekly-cpp-ei-fedTax-provTax;const loe85=netWeekly*0.85;
+return{gross:grossWeekly,cpp:cpp.toFixed(2),ei:ei.toFixed(2),fedTax:fedTax.toFixed(2),provTax:provTax.toFixed(2),net:netWeekly.toFixed(2),loe85:loe85.toFixed(2),loeMonthly:(loe85*4.33).toFixed(2)}}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════════════════════════════ */
-export default function DashboardClient({user}){const[view,setView]=useState("home");const[claims,setClaims]=useState([]);const[active,setActive]=useState(null);const[msgs,setMsgs]=useState([]);const[input,setInput]=useState("");const[loading,setLoading]=useState(false);const[files,setFiles]=useState([]);const[fc,setFc]=useState({});const[modal,setModal]=useState(null);const[nf,setNf]=useState({claimNumber:"",worker:"",employer:"",injuryDate:"",injuryType:"Acute Injury",description:""});const[noteIn,setNoteIn]=useState("");const[filter,setFilter]=useState("all");const[searchQ,setSearchQ]=useState("");const[detailTab,setDetailTab]=useState("overview");const[showCalc,setShowCalc]=useState(false);const[showAnalytics,setShowAnalytics]=useState(false);const[showTemplates,setShowTemplates]=useState(false);const[bulkSelect,setBulkSelect]=useState([]);const[showNotifs,setShowNotifs]=useState(false);const[showGlossary,setShowGlossary]=useState(false);const[glossarySearch,setGlossarySearch]=useState("");const[homeTab,setHomeTab]=useState("overview");const[commLog,setCommLog]=useState({to:"",method:"email",date:"",note:""});const[taskInput,setTaskInput]=useState("");const[valuation,setValuation]=useState({});const[providerForm,setProviderForm]=useState({name:"",type:"Family Doctor",phone:"",status:"requested"});const[cmdOpen,setCmdOpen]=useState(false);const[darkMode,setDarkMode]=useState(false);const[cmdQ,setCmdQ]=useState("");const[quickNote,setQuickNote]=useState({open:false,text:"",caseId:""});const[timer,setTimer]=useState({running:false,caseId:null,start:null,entries:[]});const[savedMemos,setSavedMemos]=useState([]);const fRef=useRef(null);const endRef=useRef(null);const taRef=useRef(null);
+export default function DashboardClient({user}){const[view,setView]=useState("home");const[claims,setClaims]=useState([]);const[active,setActive]=useState(null);const[msgs,setMsgs]=useState([]);const[input,setInput]=useState("");const[loading,setLoading]=useState(false);const[files,setFiles]=useState([]);const[fc,setFc]=useState({});const[modal,setModal]=useState(null);const[nf,setNf]=useState({claimNumber:"",worker:"",employer:"",injuryDate:"",injuryType:"Acute Injury",description:""});const[noteIn,setNoteIn]=useState("");const[filter,setFilter]=useState("all");const[searchQ,setSearchQ]=useState("");const[detailTab,setDetailTab]=useState("overview");const[showCalc,setShowCalc]=useState(false);const[showAnalytics,setShowAnalytics]=useState(false);const[showTemplates,setShowTemplates]=useState(false);const[bulkSelect,setBulkSelect]=useState([]);const[showNotifs,setShowNotifs]=useState(false);const[showGlossary,setShowGlossary]=useState(false);const[glossarySearch,setGlossarySearch]=useState("");const[homeTab,setHomeTab]=useState("overview");const[commLog,setCommLog]=useState({to:"",method:"email",date:"",note:""});const[taskInput,setTaskInput]=useState("");const[valuation,setValuation]=useState({});const[providerForm,setProviderForm]=useState({name:"",type:"Family Doctor",phone:"",status:"requested"});const[cmdOpen,setCmdOpen]=useState(false);const[darkMode,setDarkMode]=useState(false);const[diaryEntry,setDiaryEntry]=useState({date:"",note:"",caseId:""});const[cmdQ,setCmdQ]=useState("");const[quickNote,setQuickNote]=useState({open:false,text:"",caseId:""});const[timer,setTimer]=useState({running:false,caseId:null,start:null,entries:[]});const[savedMemos,setSavedMemos]=useState([]);const fRef=useRef(null);const endRef=useRef(null);const taRef=useRef(null);
 
 useEffect(()=>{const handler=(e)=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT")return;if(e.key==="n"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();setModal("new")}if(e.key==="s"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();nav("claims")}if(e.key==="a"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();setActive(null);setMsgs([]);nav("chat")}if(e.key==="h"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();nav("home")}if(e.key==="Escape"){setModal(null);setShowCalc(false);setShowAnalytics(false);setShowTemplates(false);setCmdOpen(false);setQuickNote(p=>({...p,open:false}))}if((e.metaKey||e.ctrlKey)&&e.key==="k"){e.preventDefault();setCmdOpen(true)}};window.addEventListener("keydown",handler);return()=>window.removeEventListener("keydown",handler)},[]);
 useEffect(()=>{setClaims(loadClaims(user.email))},[user.email]);
@@ -520,13 +549,19 @@ return(<div style={{padding:"14px 16px",background:"#fff",borderRadius:14,border
 <div style={{padding:"12px 16px",background:"rgba(0,113,227,.04)",border:".5px solid rgba(0,113,227,.12)",borderRadius:12,marginBottom:16,display:"flex",alignItems:"center",gap:12}}><div style={{width:32,height:32,borderRadius:8,background:stageOf(active.stage).color,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:"#fff",fontSize:14,fontWeight:700}}>{stageOf(active.stage).icon}</span></div><div style={{minWidth:0}}><div style={{fontSize:14,fontWeight:600,color:"var(--g900)"}}>Status: {stageOf(active.stage).label}</div><div style={{fontSize:12,color:"var(--g600)",marginTop:1}}>{stageOf(active.stage).guidance}</div></div></div>
 
 {/* Detail tabs */}
-<div style={{display:"flex",gap:2,padding:3,background:"var(--g200)",borderRadius:10,marginBottom:16}}>{[{id:"overview",label:"Overview"},{id:"documents",label:`Documents (${active.documents?.length||0})`},{id:"timeline",label:"Timeline"},{id:"comms",label:"Comms"},{id:"appeal",label:"Appeal"},{id:"tasks",label:"Tasks"},{id:"providers",label:"Providers"},{id:"valuation",label:"Value"}].map(t=><button key={t.id} onClick={()=>setDetailTab(t.id)} style={{flex:1,padding:"7px 0",borderRadius:8,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",background:detailTab===t.id?"#fff":"transparent",color:detailTab===t.id?"var(--g900)":"var(--g500)",boxShadow:detailTab===t.id?"0 1px 3px rgba(0,0,0,.06)":"none"}}>{t.label}</button>)}</div>
+<div style={{display:"flex",gap:2,padding:3,background:"var(--g200)",borderRadius:10,marginBottom:16}}>{[{id:"overview",label:"Overview"},{id:"documents",label:`Documents (${active.documents?.length||0})`},{id:"timeline",label:"Timeline"},{id:"comms",label:"Comms"},{id:"appeal",label:"Appeal"},{id:"tasks",label:"Tasks"},{id:"providers",label:"Providers"},{id:"valuation",label:"Value"},{id:"diary",label:"Diary"},{id:"payments",label:"Payments"},{id:"modified",label:"Modified Duties"}].map(t=><button key={t.id} onClick={()=>setDetailTab(t.id)} style={{flex:1,padding:"7px 0",borderRadius:8,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",background:detailTab===t.id?"#fff":"transparent",color:detailTab===t.id?"var(--g900)":"var(--g500)",boxShadow:detailTab===t.id?"0 1px 3px rgba(0,0,0,.06)":"none"}}>{t.label}</button>)}</div>
 
 {detailTab==="overview"&&<>
 {/* RTW Progress */}
 {(active.documents?.some(d=>["medical","form8","physio","specialist","imaging"].includes(d.tag))||active.analyses?.length>0)?<RTWBar progress={getRTWProgress(active)}/>:<div style={{padding:"14px 18px",background:"var(--g50)",borderRadius:14,border:"1px solid var(--g200)",marginBottom:16,fontSize:13,color:"var(--g500)"}}><strong style={{color:"var(--g700)"}}>RTW Timeline:</strong> Upload medical evidence or run an AI analysis to generate return-to-work projections.</div>}
 {/* Deadlines */}
 <DeadlineBar deadlines={getDeadlines(active)}/>
+{/* Risk Assessment */}
+{(()=>{const rs=getRiskScore(active);if(!rs)return null;return(<div style={{marginBottom:12,padding:"14px 18px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",boxShadow:"0 1px 3px rgba(0,0,0,.03)",display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:11,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8}}>Risk Assessment</div><div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>{rs.factors.slice(0,3).map((f,i)=><span key={i} style={{fontSize:10,color:"var(--g500)",padding:"1px 6px",background:"var(--g50)",borderRadius:4}}>{f.label}</span>)}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:22,fontWeight:800,color:rs.color}}>{rs.score}</span><span style={{fontSize:12,fontWeight:600,color:rs.color,padding:"2px 8px",borderRadius:6,background:`${rs.color}10`}}>{rs.level}</span></div></div>)})()}
+
+{/* Three-Point Contact */}
+{(()=>{const tp=getThreePointContact(active);return(<div style={{marginBottom:12,padding:"14px 18px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",boxShadow:"0 1px 3px rgba(0,0,0,.03)"}}><div style={{fontSize:11,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Three-Point Contact</div><div style={{display:"flex",gap:8}}>{Object.entries(tp).map(([k,v])=><button key={k} onClick={()=>{const cl={...active};cl.threePoint={...(cl.threePoint||{}),[k]:!v.contacted,[k+"Date"]:!v.contacted?new Date().toISOString():null};saveClaim(cl)}} style={{flex:1,padding:"8px",borderRadius:10,border:"1px solid "+(v.contacted?"rgba(52,199,89,.2)":"var(--g200)"),background:v.contacted?"rgba(52,199,89,.04)":"#fff",cursor:"pointer",textAlign:"center"}}><div style={{fontSize:12,fontWeight:v.contacted?700:500,color:v.contacted?"var(--green)":"var(--g600)"}}>{v.contacted?"✓":"○"} {v.label}</div>{v.date&&<div style={{fontSize:9,color:"var(--g400)",marginTop:2}}>{new Date(v.date).toLocaleDateString()}</div>}</button>)}</div></div>)})()}
+
 {/* Stats */}
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px, 1fr))",gap:8,marginBottom:16}}>{[{l:"Analyses",v:active.analyses?.length||0},{l:"Documents",v:active.documents?.length||0},{l:"Notes",v:active.notes?.length||0},{l:"Last Ruling",v:active.analyses?.[active.analyses.length-1]?.ruling||"—"}].map((d,i)=><div key={i} style={{padding:12,background:"#fff",borderRadius:10,border:".5px solid var(--g200)"}}><div style={{fontSize:10,fontWeight:600,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8,marginBottom:4}}>{d.l}</div><div style={{fontSize:14,fontWeight:600}}>{d.v}</div></div>)}</div>
 {/* Case summary */}
@@ -628,6 +663,61 @@ return(<div style={{padding:"14px 16px",background:"#fff",borderRadius:14,border
 <div><div style={{fontSize:14,fontWeight:600,color:"var(--blue)"}}>Build Demand Package</div><div style={{fontSize:12,color:"var(--g600)"}}>AI-generated comprehensive demand brief with all case evidence</div></div>
 </button></div>
 </>}
+
+{detailTab==="diary"&&<>
+<div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>Follow-up Diary</div>
+<div style={{padding:"14px 16px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",marginBottom:12}}>
+<div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:8,marginBottom:8}}>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Follow-up Date</label><input type="date" value={diaryEntry.date} onChange={e=>setDiaryEntry(p=>({...p,date:e.target.value}))} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none"}}/></div>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Reminder Note</label><input value={diaryEntry.note} onChange={e=>setDiaryEntry(p=>({...p,note:e.target.value}))} placeholder="Call worker for status update..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none"}}/></div>
+</div>
+<button onClick={()=>{if(diaryEntry.date&&diaryEntry.note){const cl={...active};cl.diary=[...(cl.diary||[]),{id:Date.now(),date:diaryEntry.date,note:diaryEntry.note,done:false}];cl.timeline=[...(cl.timeline||[]),{date:new Date().toISOString(),type:"note",note:"Diary: "+diaryEntry.note+" (due "+diaryEntry.date+")"}];saveClaim(cl);setDiaryEntry({date:"",note:"",caseId:""})}}} style={{padding:"8px 16px",borderRadius:980,fontSize:13,fontWeight:600,border:"none",background:"var(--blue)",color:"#fff",cursor:"pointer"}}>Add Follow-up</button>
+</div>
+{(active.diary||[]).sort((a,b)=>new Date(a.date)-new Date(b.date)).map(d=>{const isPast=new Date(d.date)<new Date();return<div key={d.id} style={{padding:"12px 16px",background:d.done?"var(--g50)":isPast?"var(--red-light)":"#fff",borderRadius:12,border:"1px solid "+(d.done?"var(--g200)":isPast?"var(--red-border)":"var(--g200)"),marginBottom:6,display:"flex",alignItems:"center",gap:12}}>
+<button onClick={()=>{const cl={...active};cl.diary=cl.diary.map(x=>x.id===d.id?{...x,done:!x.done}:x);saveClaim(cl)}} style={{width:20,height:20,borderRadius:6,border:d.done?"none":"2px solid var(--g300)",background:d.done?"var(--green)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>{d.done&&<span style={{color:"#fff",fontSize:10,fontWeight:800}}>{"✓"}</span>}</button>
+<div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:d.done?"var(--g400)":"var(--g800)",textDecoration:d.done?"line-through":"none"}}>{d.note}</div><div style={{fontSize:11,color:isPast&&!d.done?"var(--red)":"var(--g400)",fontWeight:isPast&&!d.done?600:400}}>{d.date}{isPast&&!d.done?" - OVERDUE":""}</div></div>
+<button onClick={()=>{const cl={...active};cl.diary=cl.diary.filter(x=>x.id!==d.id);saveClaim(cl)}} style={{background:"none",border:"none",color:"var(--g400)",cursor:"pointer",fontSize:14}}>x</button>
+</div>})}
+{(!active.diary||active.diary.length===0)&&<div style={{padding:32,textAlign:"center",color:"var(--g400)",fontSize:13}}>No follow-ups scheduled. Add diary reminders to track upcoming actions.</div>}
+</>}
+
+{detailTab==="payments"&&<>
+<div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>Payment Tracking</div>
+<div style={{padding:"14px 16px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",marginBottom:12}}>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 2fr",gap:8,marginBottom:8}}>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Date</label><input type="date" id="payDate" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none"}}/></div>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Amount ($)</label><input type="number" id="payAmt" placeholder="0.00" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none"}}/></div>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Type</label><select id="payType" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none",background:"#fff"}}><option value="LOE">LOE Payment</option><option value="NEL">NEL Payment</option><option value="Medical">Medical Expense</option><option value="Other">Other</option></select></div>
+</div>
+<button onClick={()=>{const date=document.getElementById("payDate").value;const amt=document.getElementById("payAmt").value;const type=document.getElementById("payType").value;if(date&&amt){const cl={...active};cl.payments=[...(cl.payments||[]),{id:Date.now(),date,amount:parseFloat(amt),type}];cl.timeline=[...(cl.timeline||[]),{date:new Date().toISOString(),type:"note",note:type+" payment: $"+parseFloat(amt).toLocaleString()}];saveClaim(cl);document.getElementById("payDate").value="";document.getElementById("payAmt").value=""}}} style={{padding:"8px 16px",borderRadius:980,fontSize:13,fontWeight:600,border:"none",background:"var(--blue)",color:"#fff",cursor:"pointer"}}>Record Payment</button>
+</div>
+{(active.payments||[]).length>0&&<div style={{padding:"14px 18px",background:"var(--blue-light)",borderRadius:14,border:"1px solid var(--blue-border)",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,fontWeight:600,color:"var(--blue)"}}>Total Payments</span><span style={{fontSize:20,fontWeight:800,color:"var(--blue)"}}>${(active.payments||[]).reduce((s,p)=>s+p.amount,0).toLocaleString()}</span></div>}
+{(active.payments||[]).slice().reverse().map(p=><div key={p.id} style={{padding:"10px 16px",background:"#fff",borderRadius:10,border:"1px solid var(--g200)",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:13,fontWeight:600,color:"var(--g800)"}}>${p.amount.toLocaleString()}</div><div style={{fontSize:11,color:"var(--g500)"}}>{p.type} - {p.date}</div></div></div>)}
+{(!active.payments||active.payments.length===0)&&<div style={{padding:32,textAlign:"center",color:"var(--g400)",fontSize:13}}>No payments recorded. Track LOE, NEL, and medical expense payments.</div>}
+<div style={{marginTop:16,fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>AWW Calculator</div>
+<div style={{padding:"14px 16px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)"}}>
+<label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Gross Weekly Earnings ($)</label>
+<input type="number" id="awwInput" placeholder="1000.00" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none",marginBottom:8}}/>
+<button onClick={()=>{const g=parseFloat(document.getElementById("awwInput").value);if(g>0){const r=calcAWW(g);alert("AWW Calculation:\\n\\nGross Weekly: $"+g.toFixed(2)+"\\nCPP: -$"+r.cpp+"\\nEI: -$"+r.ei+"\\nFederal Tax: -$"+r.fedTax+"\\nProvincial Tax: -$"+r.provTax+"\\n\\nNet Weekly: $"+r.net+"\\nLOE (85%): $"+r.loe85+"/week\\nLOE Monthly: $"+r.loeMonthly)}}} style={{padding:"8px 16px",borderRadius:980,fontSize:13,fontWeight:600,border:"none",background:"var(--blue)",color:"#fff",cursor:"pointer"}}>Calculate AWW</button>
+</div>
+</>}
+
+{detailTab==="modified"&&<>
+<div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>Modified Duties Tracker</div>
+<div style={{padding:"14px 16px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",marginBottom:12}}>
+<div style={{marginBottom:8}}><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Modified Work Description</label><input id="modDesc" placeholder="Light duties: no lifting over 10lbs, seated work only..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none"}}/></div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Start Date</label><input type="date" id="modStart" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none"}}/></div>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>End Date</label><input type="date" id="modEnd" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none"}}/></div>
+<div><label style={{fontSize:11,fontWeight:600,color:"var(--g400)",display:"block",marginBottom:4}}>Status</label><select id="modStatus" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid var(--g200)",fontSize:13,outline:"none",background:"#fff"}}><option value="offered">Offered</option><option value="accepted">Accepted</option><option value="declined">Declined</option><option value="completed">Completed</option></select></div>
+</div>
+<button onClick={()=>{const desc=document.getElementById("modDesc").value;const start=document.getElementById("modStart").value;const end=document.getElementById("modEnd").value;const status=document.getElementById("modStatus").value;if(desc){const cl={...active};cl.modifiedDuties=[...(cl.modifiedDuties||[]),{id:Date.now(),desc,start,end,status}];cl.timeline=[...(cl.timeline||[]),{date:new Date().toISOString(),type:"note",note:"Modified duties: "+desc+" ("+status+")"}];saveClaim(cl);document.getElementById("modDesc").value=""}}} style={{padding:"8px 16px",borderRadius:980,fontSize:13,fontWeight:600,border:"none",background:"var(--blue)",color:"#fff",cursor:"pointer"}}>Add Modified Duty</button>
+</div>
+{(active.modifiedDuties||[]).map(m=><div key={m.id} style={{padding:"12px 16px",background:"#fff",borderRadius:12,border:"1px solid var(--g200)",marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:14,fontWeight:600,color:"var(--g800)"}}>{m.desc}</div><span style={{padding:"2px 10px",borderRadius:980,fontSize:10,fontWeight:600,color:m.status==="accepted"?"var(--green)":m.status==="declined"?"var(--red)":m.status==="completed"?"var(--blue)":"var(--orange)",background:m.status==="accepted"?"var(--green-light)":m.status==="declined"?"var(--red-light)":m.status==="completed"?"var(--blue-light)":"rgba(255,149,0,.06)"}}>{m.status}</span></div>{(m.start||m.end)&&<div style={{fontSize:11,color:"var(--g500)",marginTop:4}}>{m.start&&"From: "+m.start} {m.end&&" To: "+m.end}</div>}</div>)}
+{(!active.modifiedDuties||active.modifiedDuties.length===0)&&<div style={{padding:32,textAlign:"center",color:"var(--g400)",fontSize:13}}>No modified duties tracked. Record workplace accommodations offered to the injured worker.</div>}
+</>}
+
+
 
 
 
