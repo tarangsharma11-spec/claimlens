@@ -17,20 +17,18 @@ export default function LoginPage() {
   const handleSignup = async (e) => { e.preventDefault(); setError(""); setLoading(true); try { const res = await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, name, inviteCode }) }); const data = await res.json(); if (!res.ok) { setError(data.error || "Signup failed."); setLoading(false); return; } const loginRes = await signIn("credentials", { email, password, redirect: false }); setLoading(false); if (loginRes?.error) { setError("Account created. Please sign in."); setTab("login"); } else router.push("/dashboard"); } catch { setError("Something went wrong."); setLoading(false); } };
 
   const features = [
-    { icon: "⚖️", title: "AI Ruling Predictions", desc: "Five Point Check against the WSIB Operational Policy Manual" },
-    { icon: "📋", title: "Compliance Monitoring", desc: "Filing deadlines, treatment durations, and policy checks" },
-    { icon: "🔄", title: "Return-to-Work Tracking", desc: "RTW plans assessed against clinical guidelines" },
-    { icon: "📄", title: "Document Analysis", desc: "Upload Form 6, 7, 8 and get instant AI insights" },
+    { icon: "\u2696\uFE0F", title: "AI Ruling Predictions", desc: "Five Point Check against the WSIB Operational Policy Manual" },
+    { icon: "\uD83D\uDCCB", title: "Compliance Monitoring", desc: "Filing deadlines, treatment durations, and policy checks" },
+    { icon: "\uD83D\uDD04", title: "Return-to-Work Tracking", desc: "RTW plans assessed against clinical guidelines" },
+    { icon: "\uD83D\uDCC4", title: "Document Analysis", desc: "Upload Form 6, 7, 8 and get instant AI insights" },
   ];
 
   return (
     <div className="login-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         @keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeInSlow{from{opacity:0}to{opacity:1}}
-        *{box-sizing:border-box;margin:0;padding:0}input,button{font-family:inherit}::placeholder{color:#AEAEB2}
-        .login-root{min-height:100vh;background:#F5F5F7;font-family:'Plus Jakarta Sans',-apple-system,sans-serif;display:flex;flex-direction:column}
+        .login-root{min-height:100vh;background:#F5F5F7;font-family:\'Plus Jakarta Sans\',-apple-system,sans-serif;display:flex;flex-direction:column}
         .login-top{padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
         .login-main{flex:1;display:flex;align-items:center;justify-content:center;padding:20px 24px 60px}
         .login-split{display:flex;gap:60px;align-items:center;max-width:1100px;width:100%;animation:fadeIn .6s cubic-bezier(.25,.1,.25,1) both}
@@ -60,32 +58,9 @@ export default function LoginPage() {
         .login-btn:hover{background:#0077ED}
         .login-btn:disabled{background:#D2D2D7;cursor:wait}
         .login-footer{text-align:center;margin-top:16px;font-size:11px;color:#AEAEB2;line-height:1.5}
-
-        /* ── Mobile ── */
-        @media(max-width:900px){
-          .login-split{flex-direction:column;gap:32px}
-          .login-hero{text-align:center}
-          .login-hero h1{font-size:34px;letter-spacing:-1.5px}
-          .login-hero p{font-size:15px;margin:0 auto 24px;max-width:100%}
-          .login-features{grid-template-columns:1fr 1fr;gap:8px}
-          .login-feat{padding:12px}
-          .login-feat-ico{font-size:18px;margin-bottom:4px}
-          .login-feat-t{font-size:12px}
-          .login-feat-d{font-size:11px}
-          .login-indicators{justify-content:center}
-          .login-form-wrap{width:100%;max-width:420px}
-          .login-main{padding:20px 16px 40px}
-        }
-        @media(max-width:480px){
-          .login-hero h1{font-size:28px;letter-spacing:-1px}
-          .login-hero p{font-size:14px}
-          .login-features{grid-template-columns:1fr}
-          .login-indicators{flex-direction:column;gap:8px}
-          .login-top{padding:12px 16px}
-          .login-card{padding:20px}
-        }
+        @media(max-width:900px){.login-split{flex-direction:column;gap:32px}.login-hero{text-align:center}.login-hero h1{font-size:34px;letter-spacing:-1.5px}.login-hero p{font-size:15px;margin:0 auto 24px;max-width:100%}.login-features{gap:8px}.login-feat{padding:12px}.login-indicators{justify-content:center}.login-form-wrap{width:100%;max-width:420px}.login-main{padding:20px 16px 40px}}
+        @media(max-width:480px){.login-hero h1{font-size:28px;letter-spacing:-1px}.login-hero p{font-size:14px}.login-features{grid-template-columns:1fr}.login-indicators{flex-direction:column;gap:8px}.login-top{padding:12px 16px}.login-card{padding:20px}}
       `}</style>
-
       <div className="login-top">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: "#1D1D1F", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -93,61 +68,29 @@ export default function LoginPage() {
           </div>
           <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: -0.4, color: "#1D1D1F" }}>CaseAssist</span>
         </div>
-        <div style={{ fontSize: 13, color: "#86868B" }} className="login-tagline">Workers' Compensation Claims Intelligence</div>
       </div>
-
-      <div className="login-main">
-        <div className="login-split">
-          <div className="login-hero">
-            <h1>Smarter claims.<br /><span>Faster rulings.</span></h1>
-            <p>CaseAssist uses AI to analyze workers' compensation claims against the WSIB Operational Policy Manual — giving you ruling predictions, compliance checks, and return-to-work guidance in seconds.</p>
-            <div className="login-features">
-              {features.map((f, i) => (
-                <div key={i} className="login-feat" style={{ animation: `fadeIn .5s cubic-bezier(.25,.1,.25,1) ${0.1 + i * 0.08}s both` }}>
-                  <div className="login-feat-ico">{f.icon}</div>
-                  <div className="login-feat-t">{f.title}</div>
-                  <div className="login-feat-d">{f.desc}</div>
-                </div>
-              ))}
-            </div>
-            <div className="login-indicators" style={{ animation: "fadeInSlow 1s ease 0.5s both" }}>
-              {[{ color: "#34C759", label: "WSIB OPM Connected" }, { color: "#0071E3", label: "ICD-10 Medical DB" }, { color: "#FF9500", label: "PIPEDA Compliant" }].map((ind, i) => (
-                <div key={i} className="login-ind"><span className="login-ind-dot" style={{ background: ind.color }} />{ind.label}</div>
-              ))}
-            </div>
-          </div>
-
-          <div className="login-form-wrap">
-            <div className="login-tabs">
-              {["login", "signup"].map(t => (
-                <button key={t} className={`login-tab ${tab === t ? "on" : "off"}`} onClick={() => { setTab(t); setError(""); }}>
-                  {t === "login" ? "Sign In" : "Create Account"}
-                </button>
-              ))}
-            </div>
-            <div className="login-card">
-              <form onSubmit={tab === "login" ? handleLogin : handleSignup}>
-                {tab === "signup" && (<>
-                  <label className="login-lbl">Access Code</label>
-                  <input className="login-inp" type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="Enter your access code" required />
-                  <label className="login-lbl">Full Name</label>
-                  <input className="login-inp" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Jane Smith" />
-                </>)}
-                <label className="login-lbl">Email</label>
-                <input className="login-inp" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
-                <label className="login-lbl">Password</label>
-                <input className="login-inp" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required minLength={8} />
-                {error && <div className="login-err">{error}</div>}
-                <button type="submit" disabled={loading} className="login-btn">
-                  {loading ? "Please wait…" : tab === "login" ? "Sign In" : "Create Account"}
-                </button>
-              </form>
-              {tab === "signup" && <p style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: "#AEAEB2" }}>Need an access code? Contact your firm administrator.</p>}
-            </div>
-            <p className="login-footer">Advisory tool only. Final decisions by authorized WSIB adjudicators. Data protected under PIPEDA / HIPAA.</p>
-          </div>
+      <div className="login-main"><div className="login-split">
+        <div className="login-hero">
+          <h1>Smarter claims.<br /><span>Faster rulings.</span></h1>
+          <p>CaseAssist uses AI to analyze workers\' compensation claims against the WSIB Operational Policy Manual \u2014 giving you ruling predictions, compliance checks, and return-to-work guidance in seconds.</p>
+          <div className="login-features">{features.map((f, i) => (<div key={i} className="login-feat" style={{ animation: `fadeIn .5s cubic-bezier(.25,.1,.25,1) ${0.1 + i * 0.08}s both` }}><div className="login-feat-ico">{f.icon}</div><div className="login-feat-t">{f.title}</div><div className="login-feat-d">{f.desc}</div></div>))}</div>
+          <div className="login-indicators" style={{ animation: "fadeInSlow 1s ease 0.5s both" }}>{[{ color: "#34C759", label: "WSIB OPM Connected" }, { color: "#0071E3", label: "ICD-10 Medical DB" }, { color: "#FF9500", label: "PIPEDA Compliant" }].map((ind, i) => (<div key={i} className="login-ind"><span className="login-ind-dot" style={{ background: ind.color }} />{ind.label}</div>))}</div>
         </div>
-      </div>
+        <div className="login-form-wrap">
+          <div className="login-tabs">{["login", "signup"].map(t => (<button key={t} className={`login-tab ${tab === t ? "on" : "off"}`} onClick={() => { setTab(t); setError(""); }}>{t === "login" ? "Sign In" : "Create Account"}</button>))}</div>
+          <div className="login-card">
+            <form onSubmit={tab === "login" ? handleLogin : handleSignup}>
+              {tab === "signup" && (<><label className="login-lbl">Access Code</label><input className="login-inp" type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="Enter your access code" required /><label className="login-lbl">Full Name</label><input className="login-inp" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Jane Smith" /></>)}
+              <label className="login-lbl">Email</label><input className="login-inp" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
+              <label className="login-lbl">Password</label><input className="login-inp" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" required minLength={8} />
+              {error && <div className="login-err">{error}</div>}
+              <button type="submit" disabled={loading} className="login-btn">{loading ? "Please wait\u2026" : tab === "login" ? "Sign In" : "Create Account"}</button>
+            </form>
+            {tab === "signup" && <p style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: "#AEAEB2" }}>Need an access code? Contact your firm administrator.</p>}
+          </div>
+          <p className="login-footer">Advisory tool only. Final decisions by authorized WSIB adjudicators. Data protected under PIPEDA / HIPAA.</p>
+        </div>
+      </div></div>
     </div>
   );
 }

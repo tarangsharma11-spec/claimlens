@@ -2,8 +2,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata = {
-  title: "CaseAssist — Workers' Compensation Claims Intelligence",
-  description: "AI-powered claims analysis against the WSIB Operational Policy Manual. Ruling predictions, compliance checks, and return-to-work guidance.",
+  title: "CaseAssist — Workers\' Compensation Claims Intelligence",
+  description: "AI-powered claims analysis against the WSIB Operational Policy Manual.",
 };
 
 export const viewport = {
