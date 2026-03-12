@@ -448,7 +448,7 @@ return(<><style jsx global>{`
 </div>
 </>}
 
-)}
+</>)}
 </div></div>)}
 
 {/* ══ CLAIMS LIST ══ */}
