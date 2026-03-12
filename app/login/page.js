@@ -17,10 +17,10 @@ export default function LoginPage() {
   const handleSignup = async (e) => { e.preventDefault(); setError(""); setLoading(true); try { const res = await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, name, inviteCode }) }); const data = await res.json(); if (!res.ok) { setError(data.error || "Signup failed."); setLoading(false); return; } const loginRes = await signIn("credentials", { email, password, redirect: false }); setLoading(false); if (loginRes?.error) { setError("Account created. Please sign in."); setTab("login"); } else router.push("/dashboard"); } catch { setError("Something went wrong."); setLoading(false); } };
 
   const features = [
-    { icon: "\u2696\uFE0F", title: "AI Ruling Predictions", desc: "Five Point Check against the WSIB Operational Policy Manual" },
-    { icon: "\uD83D\uDCCB", title: "Compliance Monitoring", desc: "Filing deadlines, treatment durations, and policy checks" },
-    { icon: "\uD83D\uDD04", title: "Return-to-Work Tracking", desc: "RTW plans assessed against clinical guidelines" },
-    { icon: "\uD83D\uDCC4", title: "Document Analysis", desc: "Upload Form 6, 7, 8 and get instant AI insights" },
+    { icon: "⚖️", title: "AI Ruling Predictions", desc: "Five Point Check against the WSIB Operational Policy Manual" },
+    { icon: "📋", title: "Compliance Monitoring", desc: "Filing deadlines, treatment durations, and policy checks" },
+    { icon: "🔄", title: "Return-to-Work Tracking", desc: "RTW plans assessed against clinical guidelines" },
+    { icon: "📄", title: "Document Analysis", desc: "Upload Form 6, 7, 8 and get instant AI insights" },
   ];
 
   return (
@@ -28,7 +28,7 @@ export default function LoginPage() {
       <style>{`
         @keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeInSlow{from{opacity:0}to{opacity:1}}
-        .login-root{min-height:100vh;background:#F5F5F7;font-family:\'Plus Jakarta Sans\',-apple-system,sans-serif;display:flex;flex-direction:column}
+        .login-root{min-height:100vh;background:#F5F5F7;font-family:"Plus Jakarta Sans",-apple-system,sans-serif;display:flex;flex-direction:column}
         .login-top{padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
         .login-main{flex:1;display:flex;align-items:center;justify-content:center;padding:20px 24px 60px}
         .login-split{display:flex;gap:60px;align-items:center;max-width:1100px;width:100%;animation:fadeIn .6s cubic-bezier(.25,.1,.25,1) both}
@@ -72,7 +72,7 @@ export default function LoginPage() {
       <div className="login-main"><div className="login-split">
         <div className="login-hero">
           <h1>Smarter claims.<br /><span>Faster rulings.</span></h1>
-          <p>CaseAssist uses AI to analyze workers\' compensation claims against the WSIB Operational Policy Manual \u2014 giving you ruling predictions, compliance checks, and return-to-work guidance in seconds.</p>
+          <p>CaseAssist uses AI to analyze workers' compensation claims against the WSIB Operational Policy Manual — giving you ruling predictions, compliance checks, and return-to-work guidance in seconds.</p>
           <div className="login-features">{features.map((f, i) => (<div key={i} className="login-feat" style={{ animation: `fadeIn .5s cubic-bezier(.25,.1,.25,1) ${0.1 + i * 0.08}s both` }}><div className="login-feat-ico">{f.icon}</div><div className="login-feat-t">{f.title}</div><div className="login-feat-d">{f.desc}</div></div>))}</div>
           <div className="login-indicators" style={{ animation: "fadeInSlow 1s ease 0.5s both" }}>{[{ color: "#34C759", label: "WSIB OPM Connected" }, { color: "#0071E3", label: "ICD-10 Medical DB" }, { color: "#FF9500", label: "PIPEDA Compliant" }].map((ind, i) => (<div key={i} className="login-ind"><span className="login-ind-dot" style={{ background: ind.color }} />{ind.label}</div>))}</div>
         </div>
@@ -82,9 +82,9 @@ export default function LoginPage() {
             <form onSubmit={tab === "login" ? handleLogin : handleSignup}>
               {tab === "signup" && (<><label className="login-lbl">Access Code</label><input className="login-inp" type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="Enter your access code" required /><label className="login-lbl">Full Name</label><input className="login-inp" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Jane Smith" /></>)}
               <label className="login-lbl">Email</label><input className="login-inp" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
-              <label className="login-lbl">Password</label><input className="login-inp" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" required minLength={8} />
+              <label className="login-lbl">Password</label><input className="login-inp" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required minLength={8} />
               {error && <div className="login-err">{error}</div>}
-              <button type="submit" disabled={loading} className="login-btn">{loading ? "Please wait\u2026" : tab === "login" ? "Sign In" : "Create Account"}</button>
+              <button type="submit" disabled={loading} className="login-btn">{loading ? "Please wait…" : tab === "login" ? "Sign In" : "Create Account"}</button>
             </form>
             {tab === "signup" && <p style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: "#AEAEB2" }}>Need an access code? Contact your firm administrator.</p>}
           </div>
