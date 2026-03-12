@@ -395,8 +395,7 @@ return(<><style jsx global>{`
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(100px, 1fr))",gap:10,marginBottom:20}}>
   <div style={{padding:"16px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",boxShadow:"0 1px 3px rgba(0,0,0,.03)",textAlign:"center"}}><div style={{fontSize:26,fontWeight:800,letterSpacing:-1}}>{claims.length}</div><div style={{fontSize:10,fontWeight:500,color:"var(--g400)",marginTop:2}}>Total</div></div>
   {stageCounts.map(s=><div key={s.id} style={{padding:"16px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",boxShadow:"0 1px 3px rgba(0,0,0,.03)",textAlign:"center"}}><div style={{fontSize:26,fontWeight:800,letterSpacing:-1,color:s.color}}>{s.count}</div><div style={{fontSize:10,fontWeight:500,color:"var(--g400)",marginTop:2}}>{s.label}</div></div>)}
-  <button onClick={()=>setShowAnalytics(true)} style={{padding:"16px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",boxShadow:"0 1px 3px rgba(0,0,0,.03)",textAlign:"center",cursor:"pointer"}}><div style={{fontSize:22,marginBottom:2}}>{"\uD83D\uDCCA"}</div><div style={{fontSize:10,fontWeight:500,color:"var(--blue)"}}>Analytics</div></button>
-  <button onClick={()=>setShowCalc(true)} style={{padding:"16px",background:"#fff",borderRadius:14,border:"1px solid var(--g200)",boxShadow:"0 1px 3px rgba(0,0,0,.03)",textAlign:"center",cursor:"pointer"}}><div style={{fontSize:22,marginBottom:2}}>{"\uD83E\uDDEE"}</div><div style={{fontSize:10,fontWeight:500,color:"var(--blue)"}}>Calculator</div></button>
+  
 </div>
 
 {/* TWO COLUMN LAYOUT */}
