@@ -416,7 +416,6 @@ return(<><style jsx global>{`
     {scenarios.map((s,i)=><button key={i} onClick={()=>{setActive(null);setMsgs([]);nav("chat");setTimeout(()=>send(s.t),100)}} style={{padding:"12px 14px",borderRadius:12,background:"#fff",border:"1px solid var(--g200)",boxShadow:"0 1px 3px rgba(0,0,0,.03)",cursor:"pointer",textAlign:"left",width:"100%",marginBottom:4}}><div style={{fontSize:13,fontWeight:600,marginBottom:1}}>{s.l}</div><div style={{fontSize:11,color:"var(--g500)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.t}</div></button>)}
   </div>
 </div>
-</>
 </>}
 
 {homeTab==="activity"&&<>
