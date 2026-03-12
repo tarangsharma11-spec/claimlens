@@ -1,115 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
 :root {
   --white: #ffffff;
-  --bg: #FAFBFC;
-  --g50: #F5F6F8;
-  --g100: #EEF1F6;
-  --g200: #E4E7ED;
-  --g300: #D2D5DC;
-  --g400: #AEAEB2;
-  --g500: #86868B;
-  --g600: #6E6E73;
-  --g700: #48484A;
-  --g800: #2C2C2E;
-  --g900: #1D1D1F;
+  --bg: #F8F9FB;
+  --g50: #F3F4F6;
+  --g100: #ECEEF2;
+  --g200: #E2E4EA;
+  --g300: #CFD2DA;
+  --g400: #A0A3AB;
+  --g500: #7C7F87;
+  --g600: #5E6069;
+  --g700: #3D3F47;
+  --g800: #27292E;
+  --g900: #141518;
   --blue: #0071E3;
-  --blue-hover: #0077ED;
-  --blue-light: rgba(0, 113, 227, 0.05);
-  --blue-border: rgba(0, 113, 227, 0.1);
-  --green: #34C759;
-  --green-light: rgba(52, 199, 89, 0.05);
-  --red: #FF3B30;
-  --red-light: rgba(255, 59, 48, 0.05);
-  --red-border: rgba(255, 59, 48, 0.1);
-  --orange: #FF9500;
-  --card: #fff;
-  --card-border: #E8EAEF;
-  --card-shadow: 0 1px 3px rgba(0,0,0,.03), 0 4px 16px rgba(0,0,0,.03);
-  --card-radius: 16px;
-  --nav-height: 64px;
+  --blue-hover: #005BBB;
+  --blue-light: rgba(0, 113, 227, 0.04);
+  --blue-border: rgba(0, 113, 227, 0.08);
+  --green: #28A745;
+  --green-light: rgba(40, 167, 69, 0.04);
+  --red: #E53935;
+  --red-light: rgba(229, 57, 53, 0.04);
+  --red-border: rgba(229, 57, 53, 0.08);
+  --orange: #F57C00;
+  --card-border: rgba(0, 0, 0, 0.06);
+  --card-shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.02);
+  --card-shadow-hover: 0 2px 4px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--g900);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  line-height: 1.5;
+  line-height: 1.55;
+  font-size: 14px;
+  letter-spacing: -0.01em;
 }
 
-::-webkit-scrollbar { width: 6px; }
+/* Premium scrollbar */
+::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--g300); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--g400); }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,.12); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.2); }
 
-::placeholder { color: #C0C0C5; }
+::placeholder { color: var(--g400); font-weight: 400; }
+::selection { background: rgba(0, 113, 227, 0.1); }
 
-/* Subtle selection color */
-::selection { background: rgba(0, 113, 227, 0.12); }
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+@keyframes pulse { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.7; } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
 
-/* Animation keyframes */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
-}
-@keyframes pulse {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 0.7; }
-}
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
+.fade-in { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
-.fade-in { animation: fadeIn 0.6s cubic-bezier(0.25, 0.1, 0.25, 1) both; }
+/* Premium transitions */
+button { transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1); }
+button:active { transform: scale(0.98); }
+input, textarea, select { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
 
-/* Card hover effect */
-.card-hover { transition: all 0.25s cubic-bezier(0.25, 0.1, 0.25, 1); }
-.card-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,.06); }
-
-/* Button transitions */
-button { transition: all 0.2s ease; }
-
-/* Input focus rings */
+/* Focus rings */
 input:focus, textarea:focus, select:focus {
   border-color: var(--blue) !important;
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.06) !important;
+  outline: none;
 }
 
-/* Smooth page transitions */
-main, section, div[style*="overflowY"] {
-  scroll-behavior: smooth;
-}
+/* Smooth scrolling */
+* { scroll-behavior: smooth; }
+
+/* Premium hover states */
+.hover-lift { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+.hover-lift:hover { transform: translateY(-1px); box-shadow: var(--card-shadow-hover); }
+
+/* Tab indicator animation */
+.tab-active { box-shadow: 0 1px 3px rgba(0,0,0,.04); }
 
 /* Dark Mode */
 .dark-mode {
-  --bg: #1A1A1C;
-  --g50: #222224;
-  --g100: #2C2C2E;
-  --g200: #3A3A3C;
-  --g300: #48484A;
-  --g400: #636366;
+  --bg: #111113;
+  --g50: #1C1C1E;
+  --g100: #232326;
+  --g200: #2E2E32;
+  --g300: #3A3A3E;
+  --g400: #5A5A5E;
   --g500: #8E8E93;
   --g600: #AEAEB2;
   --g700: #D1D1D6;
   --g800: #E5E5EA;
   --g900: #F2F2F7;
-  --card: #222224;
-  --card-border: #3A3A3C;
-  --card-shadow: 0 1px 3px rgba(0,0,0,.15);
+  --card-border: rgba(255, 255, 255, 0.06);
+  --card-shadow: 0 1px 2px rgba(0,0,0,.2);
 }
 .dark-mode { background: var(--bg); color: var(--g900); }
-.dark-mode nav { background: #1A1A1C !important; border-color: var(--g200) !important; }
-.dark-mode input, .dark-mode textarea, .dark-mode select { background: var(--g100) !important; color: var(--g900) !important; border-color: var(--g200) !important; }
+.dark-mode nav { background: #111113 !important; border-color: var(--g200) !important; }
+.dark-mode input, .dark-mode textarea, .dark-mode select {
+  background: var(--g100) !important; color: var(--g900) !important; border-color: var(--g200) !important;
+}
 .dark-mode button { color: var(--g700); }
+.dark-mode .dark-card { background: var(--g50) !important; border-color: var(--g200) !important; }
