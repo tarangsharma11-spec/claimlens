@@ -91,3 +91,25 @@ input:focus, textarea:focus, select:focus {
 main, section, div[style*="overflowY"] {
   scroll-behavior: smooth;
 }
+
+/* Dark Mode */
+.dark-mode {
+  --bg: #1A1A1C;
+  --g50: #222224;
+  --g100: #2C2C2E;
+  --g200: #3A3A3C;
+  --g300: #48484A;
+  --g400: #636366;
+  --g500: #8E8E93;
+  --g600: #AEAEB2;
+  --g700: #D1D1D6;
+  --g800: #E5E5EA;
+  --g900: #F2F2F7;
+  --card: #222224;
+  --card-border: #3A3A3C;
+  --card-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+.dark-mode { background: var(--bg); color: var(--g900); }
+.dark-mode nav { background: #1A1A1C !important; border-color: var(--g200) !important; }
+.dark-mode input, .dark-mode textarea, .dark-mode select { background: var(--g100) !important; color: var(--g900) !important; border-color: var(--g200) !important; }
+.dark-mode button { color: var(--g700); }
