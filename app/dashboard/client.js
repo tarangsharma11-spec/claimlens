@@ -342,6 +342,19 @@ const netWeekly=grossWeekly-cpp-ei-fedTax-provTax;const loe85=netWeekly*0.85;
 return{gross:grossWeekly,cpp:cpp.toFixed(2),ei:ei.toFixed(2),fedTax:fedTax.toFixed(2),provTax:provTax.toFixed(2),net:netWeekly.toFixed(2),loe85:loe85.toFixed(2),loeMonthly:(loe85*4.33).toFixed(2)}}
 
 
+
+/* === CASE WORKFLOW ENGINE === */
+const WORKFLOW_STEPS=[
+{id:"report",phase:"Intake",title:"Report the Injury",desc:"File the initial injury report with WSIB within required timelines.",checks:[{id:"form6",label:"Form 6 (Worker Report) filed",test:c=>c.documents?.some(d=>d.tag==="form6")},{id:"form7",label:"Form 7 (Employer Report) filed",test:c=>c.documents?.some(d=>d.tag==="form7")},{id:"description",label:"Incident description documented",test:c=>!!c.description&&c.description.length>10}],action:"Upload Form 6 and Form 7, and add a detailed incident description.",actionNav:"documents"},
+{id:"contact",phase:"Intake",title:"Initial Three-Point Contact",desc:"Contact the worker, employer, and medical provider within 24 hours.",checks:[{id:"worker_contact",label:"Worker contacted",test:c=>c.threePoint?.worker},{id:"employer_contact",label:"Employer contacted",test:c=>c.threePoint?.employer},{id:"medical_contact",label:"Medical provider contacted",test:c=>c.threePoint?.medical}],action:"Complete the Three-Point Contact on the Overview tab.",actionNav:"overview"},
+{id:"medical",phase:"Evidence",title:"Gather Medical Evidence",desc:"Collect Form 8, clinical notes, imaging, and functional abilities information.",checks:[{id:"form8",label:"Form 8 (Physician Report) received",test:c=>c.documents?.some(d=>d.tag==="form8")},{id:"medical_doc",label:"Medical records obtained",test:c=>c.documents?.some(d=>["medical","specialist","imaging","physio"].includes(d.tag))},{id:"provider_tracked",label:"Treating providers tracked",test:c=>c.providers?.length>0}],action:"Upload Form 8 and medical records. Track providers on the Providers tab.",actionNav:"providers"},
+{id:"analyze",phase:"Assessment",title:"Run AI Analysis",desc:"Analyze the claim against the WSIB OPM using the Five Point Check.",checks:[{id:"analysis_done",label:"AI ruling analysis completed",test:c=>c.analyses?.length>0},{id:"red_flags_reviewed",label:"Red flags reviewed",test:c=>c.analyses?.length>0}],action:"Open the Advisor and run a Five Point Check analysis.",actionNav:"chat"},
+{id:"decision",phase:"Assessment",title:"Review Decision",desc:"Review the ruling, calculate benefits, and update the claim status.",checks:[{id:"ruling_received",label:"Ruling or prediction received",test:c=>c.analyses?.length>0||c.stage==="approved"||c.stage==="denied"},{id:"benefits_calc",label:"Benefit entitlements calculated",test:c=>{const v=c.valuation||{};return Object.values(v).some(x=>parseFloat(x)>0)}},{id:"stage_set",label:"Claim status updated",test:c=>c.stage!=="new"}],action:"Update claim status and enter benefit calculations on the Value tab.",actionNav:"valuation"},
+{id:"rtw",phase:"Resolution",title:"Return-to-Work Planning",desc:"Coordinate modified duties, track recovery, and plan the return to work.",checks:[{id:"modified_duties",label:"Modified duties documented",test:c=>c.modifiedDuties?.length>0},{id:"faf_obtained",label:"Functional Abilities Form obtained",test:c=>c.documents?.some(d=>(d.name||"").toLowerCase().includes("faf")||(d.name||"").toLowerCase().includes("functional"))}],action:"Record modified duties and request an updated FAF from the treating physician.",actionNav:"modified"},
+{id:"resolve",phase:"Resolution",title:"Close or Appeal",desc:"Resolve the claim through closure, settlement, or begin the appeal process.",checks:[{id:"resolved",label:"Claim resolved or appeal filed",test:c=>c.stage==="closed"||c.stage==="approved"||(c.appeal?.stage&&c.appeal.stage!=="none")}],action:"Update the claim to its final status or start the appeal process.",actionNav:"appeal"}
+];
+function getWorkflowStatus(claim){if(!claim)return{steps:[],currentIdx:0,pct:0};const steps=WORKFLOW_STEPS.map(s=>{const checks=s.checks.map(ch=>({...ch,done:ch.test(claim)}));const complete=checks.every(ch=>ch.done);const partial=checks.some(ch=>ch.done);return{...s,checks,complete,partial}});let currentIdx=steps.findIndex(s=>!s.complete);if(currentIdx<0)currentIdx=steps.length-1;const done=steps.filter(s=>s.complete).length;const pct=Math.round((done/steps.length)*100);return{steps,currentIdx,pct}}
+
 /* ═══════════════════════════════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════════════════════════════ */
@@ -553,6 +566,37 @@ return(<div style={{padding:"14px 16px",background:"#fff",borderRadius:12,border
 <div style={{display:"flex",gap:2,padding:3,background:"var(--g200)",borderRadius:12,marginBottom:16}}>{[{id:"overview",label:"Overview"},{id:"documents",label:`Documents (${active.documents?.length||0})`},{id:"timeline",label:"Timeline"},{id:"comms",label:"Comms"},{id:"appeal",label:"Appeal"},{id:"tasks",label:"Tasks"},{id:"providers",label:"Providers"},{id:"valuation",label:"Value"},{id:"diary",label:"Diary"},{id:"payments",label:"Payments"},{id:"modified",label:"Modified Duties"}].map(t=><button key={t.id} onClick={()=>setDetailTab(t.id)} style={{flex:1,padding:"7px 0",borderRadius:8,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",background:detailTab===t.id?"#fff":"transparent",color:detailTab===t.id?"var(--g900)":"var(--g500)",boxShadow:detailTab===t.id?"0 1px 3px rgba(0,0,0,.06)":"none"}}>{t.label}</button>)}</div>
 
 {detailTab==="overview"&&<>
+{/* WORKFLOW PROGRESS */}
+{(()=>{const wf=getWorkflowStatus(active);const current=wf.steps[wf.currentIdx];return(<div style={{marginBottom:14}}>
+<div style={{padding:"18px 20px",background:"#fff",borderRadius:16,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+<div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1}}>Case Progress</div>
+<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:20,fontWeight:800,color:"var(--blue)"}}>{wf.pct}%</span><span style={{fontSize:11,color:"var(--g500)"}}>{wf.steps.filter(s=>s.complete).length}/{wf.steps.length} steps</span></div>
+</div>
+<div style={{height:6,background:"var(--g100)",borderRadius:3,overflow:"hidden",marginBottom:14}}><div style={{height:"100%",width:wf.pct+"%",background:"linear-gradient(90deg, var(--blue), #00B4D8)",borderRadius:3,transition:"width .5s cubic-bezier(.16,1,.3,1)"}}/></div>
+<div style={{display:"flex",gap:2,marginBottom:14}}>{wf.steps.map((s,i)=>(
+<div key={s.id} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer",opacity:i<=wf.currentIdx?1:.5}} onClick={()=>{if(s.actionNav==="chat"){setMsgs(active.messages||[]);nav("chat")}else setDetailTab(s.actionNav||"overview")}}>
+<div style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,background:s.complete?"var(--green)":i===wf.currentIdx?"var(--blue)":"var(--g200)",color:s.complete||i===wf.currentIdx?"#fff":"var(--g500)",transition:"all .3s",border:i===wf.currentIdx&&!s.complete?"2px solid var(--blue)":"2px solid transparent"}}>{s.complete?"✓":i+1}</div>
+<span style={{fontSize:9,fontWeight:600,color:i===wf.currentIdx?"var(--blue)":s.complete?"var(--green)":"var(--g400)",textAlign:"center",lineHeight:1.2,maxWidth:72}}>{s.title}</span>
+</div>))}</div>
+{current&&!current.complete&&<div style={{padding:"14px 16px",background:current.partial?"rgba(0,113,227,.03)":"rgba(245,124,0,.03)",borderRadius:12,border:"1px solid "+(current.partial?"var(--blue-border)":"rgba(245,124,0,.08)")}}>
+<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+<div style={{width:22,height:22,borderRadius:"50%",background:"var(--blue)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,flexShrink:0}}>{wf.currentIdx+1}</div>
+<div><div style={{fontSize:13,fontWeight:700,color:"var(--g900)"}}>{current.title}</div><div style={{fontSize:11,color:"var(--g500)"}}>{current.phase}</div></div>
+</div>
+<div style={{marginBottom:8}}>{current.checks.map(ch=>(
+<div key={ch.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0"}}>
+<div style={{width:16,height:16,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,flexShrink:0,background:ch.done?"var(--green)":"transparent",border:ch.done?"none":"1.5px solid var(--g300)",color:"#fff"}}>{ch.done?"✓":""}</div>
+<span style={{fontSize:12,color:ch.done?"var(--g500)":"var(--g800)",textDecoration:ch.done?"line-through":"none"}}>{ch.label}</span>
+</div>))}</div>
+<button onClick={()=>{if(current.actionNav==="chat"){setMsgs(active.messages||[]);nav("chat")}else setDetailTab(current.actionNav||"overview")}} style={{padding:"8px 16px",borderRadius:100,fontSize:12,fontWeight:600,border:"none",background:"var(--blue)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+<svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+{current.action}</button>
+</div>}
+{wf.pct===100&&<div style={{padding:"12px 16px",background:"rgba(40,167,69,.04)",borderRadius:12,border:"1px solid rgba(40,167,69,.1)",textAlign:"center"}}><span style={{fontSize:13,fontWeight:700,color:"var(--green)"}}>All workflow steps complete</span></div>}
+</div>
+</div>)})()}
+
 {/* RTW Progress */}
 {(active.documents?.some(d=>["medical","form8","physio","specialist","imaging"].includes(d.tag))||active.analyses?.length>0)?<RTWBar progress={getRTWProgress(active)}/>:<div style={{padding:"14px 18px",background:"var(--g50)",borderRadius:12,border:"1px solid var(--card-border)",marginBottom:16,fontSize:13,color:"var(--g500)"}}><strong style={{color:"var(--g700)"}}>RTW Timeline:</strong> Upload medical evidence or run an AI analysis to generate return-to-work projections.</div>}
 {/* Deadlines */}
