@@ -634,7 +634,7 @@ return(<div style={{padding:"14px 16px",background:"#fff",borderRadius:12,border
 
 {/* Upload buttons by type */}
 <div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Upload Documents</div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))",gap:6,marginBottom:14}}>
+<div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:6,marginBottom:14}}>
 {[{tag:"form6",label:"Form 6",desc:"Worker Report",color:"#0071E3"},{tag:"form7",label:"Form 7",desc:"Employer Report",color:"#28A745"},{tag:"form8",label:"Form 8",desc:"Physician Report",color:"#F57C00"},{tag:"medical",label:"Medical",desc:"Clinical Notes",color:"#AF52DE"},{tag:"imaging",label:"Imaging",desc:"X-ray, MRI, CT",color:"#FF2D55"},{tag:"specialist",label:"Specialist",desc:"Referral / Consult",color:"#5856D6"},{tag:"physio",label:"Physio/Rehab",desc:"Therapy Reports",color:"#30B0C7"},{tag:"witness",label:"Witness",desc:"Witness Statement",color:"#00C7BE"},{tag:"auto",label:"Other",desc:"Auto-detect type",color:"#7C7F87"}].map(dt=>{const hasDoc=active.documents?.some(d=>d.tag===dt.tag);return(
 <button key={dt.tag} onClick={()=>{fRef.current.dataset.tag=dt.tag;fRef.current.click()}} style={{padding:"10px 12px",borderRadius:12,border:"1px solid "+(hasDoc?dt.color+"20":"var(--card-border)"),background:hasDoc?dt.color+"06":"#fff",cursor:"pointer",textAlign:"left",position:"relative"}}>
 <div style={{width:24,height:24,borderRadius:6,background:dt.color+"14",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:6}}><span style={{fontSize:10,fontWeight:700,color:dt.color}}>{dt.tag==="auto"?"+":dt.label.replace("Form ","F")}</span></div>
