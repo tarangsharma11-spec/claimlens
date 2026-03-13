@@ -472,52 +472,86 @@ return(<><style jsx global>{`
 </div>
 
 {homeTab==="overview"&&<>
-{/* COMPACT GRADIENT HERO */}
-<div style={{padding:"20px 24px",background:"linear-gradient(135deg, #0062CC 0%, #0088F0 40%, #00B4D8 70%, #2EC4B6 100%)",borderRadius:20,marginBottom:20,color:"#fff",position:"relative",overflow:"hidden",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
+{/* HERO + KEY METRICS */}
+<div style={{padding:"18px 22px",background:"linear-gradient(135deg, #0062CC 0%, #0088F0 40%, #00B4D8 70%, #2EC4B6 100%)",borderRadius:20,marginBottom:14,color:"#fff",position:"relative",overflow:"hidden"}}>
   <div style={{position:"absolute",top:-40,right:-40,width:200,height:200,background:"radial-gradient(circle, rgba(255,255,255,.1) 0%, transparent 70%)",borderRadius:"50%"}}/>
-  <div style={{position:"relative",zIndex:1}}>
-    <h1 style={{fontSize:"clamp(24px, 4vw, 32px)",fontWeight:800,letterSpacing:-1.2,marginBottom:4}}>Welcome back, {user.name?.split(" ")[0]||"there"}</h1>
-    <p style={{fontSize:14,opacity:.8}}>{claims.length} case{claims.length!==1?"s":""}{needsAttention.length>0?` \u00B7 ${needsAttention.length} need${needsAttention.length===1?"s":""} attention`:""}</p>
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,position:"relative",zIndex:1}}>
+    <div>
+      <h1 style={{fontSize:"clamp(22px, 4vw, 28px)",fontWeight:800,letterSpacing:-1,marginBottom:2}}>Welcome back, {user.name?.split(" ")[0]||"there"}</h1>
+      <p style={{fontSize:13,opacity:.8}}>{claims.length} case{claims.length!==1?"s":""}{needsAttention.length>0?` \u00B7 ${needsAttention.length} need attention`:""}</p>
+    </div>
+    <div style={{display:"flex",gap:8}}>
+      <button onClick={()=>setModal("new")} style={{padding:"8px 18px",borderRadius:100,fontSize:12,fontWeight:600,background:"rgba(255,255,255,.2)",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,.25)",color:"#fff",cursor:"pointer"}}>+ New Case</button>
+      <button onClick={()=>{setActive(null);setMsgs([]);nav("chat")}} style={{padding:"8px 18px",borderRadius:100,fontSize:12,fontWeight:600,background:"rgba(255,255,255,.2)",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,.25)",color:"#fff",cursor:"pointer"}}>Ask Advisor</button>
+    </div>
   </div>
-  <div style={{display:"flex",gap:8,flexWrap:"wrap",position:"relative",zIndex:1}}>
-    <button onClick={()=>setModal("new")} style={{padding:"9px 20px",borderRadius:100,fontSize:13,fontWeight:600,background:"rgba(255,255,255,.2)",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,.25)",color:"#fff",cursor:"pointer"}}>+ New Case</button>
-    <button onClick={()=>{setActive(null);setMsgs([]);nav("chat")}} style={{padding:"9px 20px",borderRadius:100,fontSize:13,fontWeight:600,background:"rgba(255,255,255,.2)",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,.25)",color:"#fff",cursor:"pointer"}}>Ask Advisor</button>
+  {/* Inline stats */}
+  <div style={{display:"flex",gap:12,marginTop:14,position:"relative",zIndex:1}}>
+    {[{n:claims.length,l:"Total"},{n:claims.filter(c=>c.stage==="new").length,l:"New"},{n:claims.filter(c=>c.stage==="review"||c.stage==="investigate").length,l:"Active"},{n:claims.filter(c=>c.stage==="approved").length,l:"Approved"},{n:claims.filter(c=>c.stage==="denied").length,l:"Denied"}].map((s,i)=><div key={i} style={{padding:"8px 14px",background:"rgba(255,255,255,.12)",borderRadius:10,textAlign:"center",minWidth:60}}><div style={{fontSize:20,fontWeight:800}}>{s.n}</div><div style={{fontSize:10,opacity:.7}}>{s.l}</div></div>)}
   </div>
 </div>
 
-{/* TODAY'S AGENDA */}
-{(()=>{const overdue=claims.flatMap(c=>getDeadlines(c).filter(d=>d.status==="overdue").map(d=>({...d,claimNumber:c.claimNumber,caseId:c.id})));const upcoming=claims.flatMap(c=>getDeadlines(c).filter(d=>d.daysLeft>=0&&d.daysLeft<=7&&d.status!=="overdue").map(d=>({...d,claimNumber:c.claimNumber,caseId:c.id})));const openTasks=claims.flatMap(c=>(c.tasks||[]).filter(t=>!t.done).map(t=>({...t,claimNumber:c.claimNumber,caseId:c.id})));
-if(overdue.length===0&&upcoming.length===0&&openTasks.length===0)return null;
-return(<div style={{padding:"14px 16px",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",marginBottom:14}}>
+{/* THREE-COLUMN GRID */}
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
+
+{/* COL 1: Agenda + Warnings */}
+<div>
+<div style={{padding:"14px 16px",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",marginBottom:10}}>
 <div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Today's Agenda</div>
-{overdue.length>0&&<div style={{marginBottom:8}}>{overdue.slice(0,3).map((d,i)=><div key={i} onClick={()=>{const cc=claims.find(x=>x.id===d.caseId);if(cc)openClaim(cc)}} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",cursor:"pointer"}}><div style={{width:6,height:6,borderRadius:"50%",background:"var(--red)",flexShrink:0}}/><span style={{fontSize:12,color:"var(--red)",fontWeight:600}}>{d.claimNumber}</span><span style={{fontSize:12,color:"var(--g600)"}}>{d.label}</span><span style={{fontSize:10,color:"var(--red)",fontWeight:600,marginLeft:"auto"}}>{Math.abs(d.daysLeft)}d overdue</span></div>)}</div>}
-{upcoming.length>0&&<div style={{marginBottom:8}}>{upcoming.slice(0,3).map((d,i)=><div key={i} onClick={()=>{const cc=claims.find(x=>x.id===d.caseId);if(cc)openClaim(cc)}} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",cursor:"pointer"}}><div style={{width:6,height:6,borderRadius:"50%",background:"var(--orange)",flexShrink:0}}/><span style={{fontSize:12,color:"var(--g700)",fontWeight:600}}>{d.claimNumber}</span><span style={{fontSize:12,color:"var(--g600)"}}>{d.label}</span><span style={{fontSize:10,color:"var(--orange)",fontWeight:600,marginLeft:"auto"}}>{d.daysLeft}d</span></div>)}</div>}
-{openTasks.length>0&&<div>{openTasks.slice(0,3).map((t,i)=><div key={i} onClick={()=>{const cc=claims.find(x=>x.id===t.caseId);if(cc){openClaim(cc);setDetailTab("tasks")}}} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",cursor:"pointer"}}><div style={{width:14,height:14,borderRadius:4,border:"2px solid var(--g300)",flexShrink:0}}/><span style={{fontSize:12,color:"var(--g700)",fontWeight:600}}>{t.claimNumber}</span><span style={{fontSize:12,color:"var(--g600)"}}>{t.text}</span></div>)}</div>}
-</div>)})()}
-
-{/* STATS + TOOLS ROW */}
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(100px, 1fr))",gap:10,marginBottom:14}}>
-  <div style={{padding:"14px",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",textAlign:"center"}}><div style={{fontSize:26,fontWeight:800,letterSpacing:-1.5}}>{claims.length}</div><div style={{fontSize:10,fontWeight:500,color:"var(--g400)",marginTop:2}}>Total</div></div>
-  {stageCounts.map(s=><div key={s.id} style={{padding:"14px",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",textAlign:"center"}}><div style={{fontSize:26,fontWeight:800,letterSpacing:-1.5,color:s.color}}>{s.count}</div><div style={{fontSize:10,fontWeight:500,color:"var(--g400)",marginTop:2}}>{s.label}</div></div>)}
-  
+{(()=>{const overdue=claims.flatMap(c=>getDeadlines(c).filter(d=>d.status==="overdue").map(d=>({...d,claimNumber:c.claimNumber,caseId:c.id})));const upcoming=claims.flatMap(c=>getDeadlines(c).filter(d=>d.daysLeft>=0&&d.daysLeft<=7&&d.status!=="overdue").map(d=>({...d,claimNumber:c.claimNumber,caseId:c.id})));const openTasks=claims.flatMap(c=>(c.tasks||[]).filter(t=>!t.done).map(t=>({...t,claimNumber:c.claimNumber,caseId:c.id})));
+const items=[...overdue.map(d=>({type:"overdue",label:d.claimNumber+": "+d.label,sub:Math.abs(d.daysLeft)+"d overdue",caseId:d.caseId})),...upcoming.map(d=>({type:"upcoming",label:d.claimNumber+": "+d.label,sub:d.daysLeft+"d",caseId:d.caseId})),...openTasks.map(t=>({type:"task",label:t.claimNumber+": "+t.text,sub:"Open task",caseId:t.caseId}))];
+return items.length>0?items.slice(0,5).map((it,i)=><div key={i} onClick={()=>{const cc=claims.find(x=>x.id===it.caseId);if(cc)openClaim(cc)}} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",cursor:"pointer",borderBottom:i<Math.min(items.length,5)-1?"1px solid var(--g100)":"none"}}><div style={{width:6,height:6,borderRadius:"50%",background:it.type==="overdue"?"var(--red)":it.type==="upcoming"?"var(--orange)":"var(--g300)",flexShrink:0}}/><span style={{fontSize:11,color:"var(--g700)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.label}</span><span style={{fontSize:10,fontWeight:600,color:it.type==="overdue"?"var(--red)":it.type==="upcoming"?"var(--orange)":"var(--g400)",flexShrink:0}}>{it.sub}</span></div>):<div style={{fontSize:12,color:"var(--g400)",padding:"8px 0"}}>No urgent items today</div>})()}
 </div>
 
-{/* TWO COLUMN LAYOUT */}
-<div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:16,marginBottom:14}}>
-  <div>
-    {needsAttention.length>0&&<><div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Needs Attention</div>{needsAttention.slice(0,4).map(c=><CaseSummaryCard key={c.id} claim={c} onClick={()=>openClaim(c)}/>)}</>}
-    {recentClaims.filter(c=>!needsAttention.find(n=>n.id===c.id)).length>0&&<><div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:10,marginTop:needsAttention.length>0?16:0}}>Recent Cases</div>{recentClaims.filter(c=>!needsAttention.find(n=>n.id===c.id)).slice(0,3).map(c=><CaseSummaryCard key={c.id} claim={c} onClick={()=>openClaim(c)}/>)}</>}
-  </div>
-  <div style={{overflow:"hidden",minWidth:0}}>
-    <div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Quick Tools</div>
-    {[{label:"Case Templates",desc:"Start from a template",onClick:()=>setShowTemplates(true)},{label:"Benefit Calculator",desc:"Estimate LOE & NEL",onClick:()=>setShowCalc(true)},{label:"Analytics Dashboard",desc:"Portfolio insights",onClick:()=>setShowAnalytics(true)},{label:"Conflict Check",desc:"Search all cases for conflicts",onClick:()=>{const name=prompt("Enter a name to check for conflicts (worker, employer, or provider):");if(name){const q=name.toLowerCase();const matches=claims.filter(cl=>[cl.worker,cl.employer,...(cl.providers||[]).map(p=>p.name)].some(n=>(n||"").toLowerCase().includes(q)));if(matches.length>0)alert("Potential conflicts found in "+matches.length+" case(s): "+matches.map(m=>m.claimNumber+" ("+m.worker+" vs "+m.employer+")").join(", "));else alert("No conflicts found for: "+name)}}}].map((t,i)=>(
-      <button key={i} onClick={t.onClick} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",cursor:"pointer",textAlign:"left",width:"100%",marginBottom:6}}>
-        <div><div style={{fontSize:13,fontWeight:600,color:"var(--g900)"}}>{t.label}</div><div style={{fontSize:11,color:"var(--g500)"}}>{t.desc}</div></div>
-      </button>
-    ))}
-    <div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:10,marginTop:16}}>Ask the Advisor</div>
-    {scenarios.map((s,i)=><button key={i} onClick={()=>{setActive(null);setMsgs([]);nav("chat");setTimeout(()=>send(s.t),100)}} style={{padding:"12px 14px",borderRadius:12,background:"#fff",border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",cursor:"pointer",textAlign:"left",width:"100%",marginBottom:4,overflow:"hidden",maxWidth:"100%"}}><div style={{fontSize:13,fontWeight:600,marginBottom:1}}>{s.l}</div><div style={{fontSize:11,color:"var(--g500)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.t}</div></button>)}
-  </div>
+{/* Smart Warnings */}
+<div style={{padding:"14px 16px",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)"}}>
+<div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Warnings</div>
+{(()=>{const allWarns=claims.flatMap(c=>getSmartWarnings(c).map(w=>({...w,claimNumber:c.claimNumber,caseId:c.id})));return allWarns.length>0?allWarns.slice(0,4).map((w,i)=><div key={i} onClick={()=>{const cc=claims.find(x=>x.id===w.caseId);if(cc)openClaim(cc)}} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",cursor:"pointer",borderBottom:i<Math.min(allWarns.length,4)-1?"1px solid var(--g100)":"none"}}><span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:4,color:w.type==="critical"?"var(--red)":"var(--orange)",background:w.type==="critical"?"var(--red-light)":"rgba(245,124,0,.04)",flexShrink:0}}>{w.label}</span><span style={{fontSize:11,color:"var(--g600)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{w.claimNumber}</span></div>):<div style={{fontSize:12,color:"var(--g400)",padding:"8px 0"}}>No warnings</div>})()}
+</div>
+</div>
+
+{/* COL 2: Cases needing attention + recent */}
+<div>
+<div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Needs Attention</div>
+{needsAttention.length>0?needsAttention.slice(0,3).map(c=><CaseSummaryCard key={c.id} claim={c} onClick={()=>openClaim(c)}/>):<div style={{padding:"20px",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",textAlign:"center",fontSize:12,color:"var(--g400)"}}>All cases on track</div>}
+{recentClaims.filter(c=>!needsAttention.find(n=>n.id===c.id)).length>0&&<><div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:8,marginTop:12}}>Recent</div>{recentClaims.filter(c=>!needsAttention.find(n=>n.id===c.id)).slice(0,2).map(c=><CaseSummaryCard key={c.id} claim={c} onClick={()=>openClaim(c)}/>)}</>}
+</div>
+
+{/* COL 3: Quick tools + Advisor prompts + Pipeline mini */}
+<div>
+{/* Mini pipeline */}
+<div style={{padding:"14px 16px",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",marginBottom:10}}>
+<div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Pipeline</div>
+{[{id:"new",l:"New",c:"var(--blue)"},{id:"review",l:"Review",c:"var(--orange)"},{id:"investigate",l:"Investigate",c:"#AF52DE"},{id:"approved",l:"Approved",c:"var(--green)"},{id:"denied",l:"Denied",c:"var(--red)"}].map(s=>{const cnt=claims.filter(c=>c.stage===s.id).length;const pct=claims.length>0?Math.round(cnt/claims.length*100):0;return(<div key={s.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontSize:11,color:"var(--g600)",width:60}}>{s.l}</span><div style={{flex:1,height:6,background:"var(--g100)",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:s.c,borderRadius:3}}/></div><span style={{fontSize:11,fontWeight:600,color:"var(--g800)",width:20,textAlign:"right"}}>{cnt}</span></div>)})}
+<button onClick={()=>nav("board")} style={{width:"100%",marginTop:8,padding:"7px",borderRadius:8,fontSize:11,fontWeight:600,border:"1px solid var(--card-border)",background:"var(--g50)",color:"var(--g600)",cursor:"pointer"}}>View Board</button>
+</div>
+
+{/* Quick tools */}
+<div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Quick Tools</div>
+{[{label:"Case Templates",desc:"Start from a template",onClick:()=>setShowTemplates(true)},{label:"Benefit Calculator",desc:"Estimate LOE & NEL",onClick:()=>setShowCalc(true)},{label:"Analytics",desc:"Portfolio insights",onClick:()=>setShowAnalytics(true)},{label:"Conflict Check",desc:"Search for conflicts",onClick:()=>{const name=prompt("Enter a name to check:");if(name){const q=name.toLowerCase();const matches=claims.filter(cl=>[cl.worker,cl.employer,...(cl.providers||[]).map(p=>p.name)].some(n=>(n||"").toLowerCase().includes(q)));alert(matches.length>0?"Conflicts in "+matches.length+" case(s): "+matches.map(m=>m.claimNumber).join(", "):"No conflicts for: "+name)}}}].map((t,i)=>(
+<button key={i} onClick={t.onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#fff",borderRadius:10,border:"1px solid var(--card-border)",cursor:"pointer",textAlign:"left",width:"100%",marginBottom:4}}><div><div style={{fontSize:12,fontWeight:600,color:"var(--g800)"}}>{t.label}</div><div style={{fontSize:10,color:"var(--g500)"}}>{t.desc}</div></div></button>))}
+
+{/* Advisor prompts */}
+<div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1,marginBottom:8,marginTop:12}}>Ask the Advisor</div>
+{scenarios.slice(0,3).map((s,i)=><button key={i} onClick={()=>{setActive(null);setMsgs([]);nav("chat");setTimeout(()=>send(s.t),100)}} style={{padding:"8px 10px",borderRadius:10,background:"#fff",border:"1px solid var(--card-border)",cursor:"pointer",textAlign:"left",width:"100%",marginBottom:4,overflow:"hidden"}}><div style={{fontSize:11,fontWeight:600,color:"var(--g800)"}}>{s.l}</div><div style={{fontSize:10,color:"var(--g500)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.t.slice(0,60)}</div></button>)}
+</div>
+
+</div>
+
+{/* RECENT ACTIVITY FEED - bottom row */}
+<div style={{padding:"14px 16px",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+<div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1}}>Recent Activity</div>
+<button onClick={()=>setHomeTab("activity")} style={{fontSize:11,fontWeight:500,color:"var(--blue)",background:"none",border:"none",cursor:"pointer"}}>View all</button>
+</div>
+<div style={{display:"flex",gap:6,overflowX:"auto"}}>
+{claims.flatMap(cl=>(cl.timeline||[]).map(t=>({...t,claimNumber:cl.claimNumber,caseId:cl.id}))).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6).map((ev,i)=>(
+<div key={i} onClick={()=>{const cc=claims.find(x=>x.id===ev.caseId);if(cc)openClaim(cc)}} style={{minWidth:180,flex:"0 0 180px",padding:"10px 12px",background:"var(--g50)",borderRadius:10,cursor:"pointer"}}>
+<div style={{fontSize:10,fontWeight:600,color:"var(--blue)"}}>{ev.claimNumber}</div>
+<div style={{fontSize:11,color:"var(--g700)",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ev.note}</div>
+<div style={{fontSize:10,color:"var(--g400)",marginTop:2}}>{fmtTime(ev.date)}</div>
+</div>))}
+</div>
 </div>
 </>}
 
