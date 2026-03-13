@@ -433,12 +433,12 @@ return(<><style jsx global>{`
 
 {/* LEFT SIDEBAR */}
 <div style={{display:"flex",flex:1,overflow:"hidden"}}>
-<div onMouseEnter={()=>setSideHover(true)} onMouseLeave={()=>setSideHover(false)} className="desktop-nav" style={{width:sideHover?180:52,flexShrink:0,background:"linear-gradient(180deg, #003D7A 0%, #005BA8 35%, #007A9E 65%, #1A8A7D 100%)",borderRight:"none",display:"flex",flexDirection:"column",padding:"12px 0",transition:"width .2s cubic-bezier(.16,1,.3,1)",overflow:"hidden",zIndex:95}}>
+<div onMouseEnter={()=>setSideHover(true)} onMouseLeave={()=>setSideHover(false)} className="desktop-nav" style={{width:sideHover?180:52,flexShrink:0,background:"linear-gradient(180deg, #1A1040 0%, #251A5E 35%, #2E3580 65%, #3B5EC0 100%)",borderRight:"none",display:"flex",flexDirection:"column",padding:"12px 0",transition:"width .2s cubic-bezier(.16,1,.3,1)",overflow:"hidden",zIndex:95}}>
 <div style={{padding:"0 10px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:8,overflow:"hidden"}} onClick={()=>nav("home")}>
 <div style={{width:32,height:32,flexShrink:0}}><svg width="32" height="32" viewBox="0 0 80 90" fill="none">
-<defs><linearGradient id="slogo" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stopColor="#003D7A"/><stop offset="100%" stopColor="#006B8F"/></linearGradient></defs>
-<rect x="16" y="16" width="54" height="64" rx="12" fill="#1A8A7D" opacity="0.6"/>
-<rect x="10" y="10" width="54" height="64" rx="12" fill="#007A9E" opacity="0.75"/>
+<defs><linearGradient id="slogo" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stopColor="#1A1040"/><stop offset="100%" stopColor="#2E3580"/></linearGradient></defs>
+<rect x="16" y="16" width="54" height="64" rx="12" fill="#3B5EC0" opacity="0.5"/>
+<rect x="10" y="10" width="54" height="64" rx="12" fill="#2E3580" opacity="0.7"/>
 <rect x="4" y="4" width="54" height="64" rx="12" fill="url(#slogo)"/>
 <line x1="16" y1="22" x2="44" y2="22" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.7"/>
 <line x1="16" y1="34" x2="38" y2="34" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.5"/>
@@ -513,7 +513,7 @@ return(<><style jsx global>{`
 <div>
 {/* AI Ask Bar */}
 <div style={{padding:"18px 22px",background:"#fff",borderRadius:16,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",marginBottom:12}}>
-<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><div style={{width:24,height:24,borderRadius:8,background:"linear-gradient(135deg, var(--blue), #00B4D8)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:10,fontWeight:800,color:"#fff"}}>AI</span></div><div><div style={{fontSize:14,fontWeight:700,color:"var(--g900)"}}>Claims AI</div><div style={{fontSize:11,color:"var(--g500)"}}>Get AI-generated answers and briefs based on your cases</div></div></div>
+<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><div style={{width:24,height:24,borderRadius:8,background:"linear-gradient(135deg, #251A5E, #3B5EC0)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:10,fontWeight:800,color:"#fff"}}>AI</span></div><div><div style={{fontSize:14,fontWeight:700,color:"var(--g900)"}}>Claims AI</div><div style={{fontSize:11,color:"var(--g500)"}}>Get AI-generated answers and briefs based on your cases</div></div></div>
 <div onClick={()=>{setActive(null);setMsgs([]);nav("chat")}} style={{padding:"10px 16px",borderRadius:12,border:"1px solid var(--card-border)",background:"var(--g50)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:13,color:"var(--g400)"}}>Ask anything about your cases...</span><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="var(--g400)" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg></div>
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[{l:"Weekly update",p:"Give me a weekly summary of all my cases. What changed this week, what needs attention, and what are the next steps for each case?"},{l:"Next steps",p:"What are the most urgent next steps I should take across all my active cases right now?"},{l:"Risk review",p:"Which of my cases are at the highest risk right now? What warning signs should I be aware of?"},{l:"Compliance check",p:"Review all my cases for compliance issues - missed deadlines, missing forms, overdue follow-ups, and any WSIB OPM violations."}].map((q,i)=><button key={i} onClick={()=>{setActive(null);setMsgs([]);nav("chat");setTimeout(()=>send(q.p),100)}} style={{padding:"5px 12px",borderRadius:100,fontSize:11,fontWeight:500,border:"1px solid var(--card-border)",background:"#fff",color:"var(--g600)",cursor:"pointer"}}>{q.l}</button>)}</div>
 </div>
@@ -537,7 +537,7 @@ return(<><style jsx global>{`
 {/* Right sidebar: Upcoming + Warnings */}
 <div>
 {/* Welcome card */}
-<div style={{padding:"16px 18px",background:"linear-gradient(135deg, #003D7A 0%, #007A9E 100%)",borderRadius:16,marginBottom:10,color:"#fff"}}>
+<div style={{padding:"16px 18px",background:"linear-gradient(135deg, #1A1040 0%, #3B5EC0 100%)",borderRadius:16,marginBottom:10,color:"#fff"}}>
 <div style={{fontSize:16,fontWeight:800,letterSpacing:-.5}}>Welcome back, {user.name?.split(" ")[0]||"there"}</div>
 <div style={{fontSize:12,opacity:.8,marginTop:2}}>{claims.length} case{claims.length!==1?"s":""}{needsAttention.length>0?" · "+needsAttention.length+" need attention":""}</div>
 <div style={{display:"flex",gap:6,marginTop:10}}>
