@@ -85,27 +85,3 @@ input:focus, textarea:focus, select:focus {
 
 /* Tab indicator animation */
 .tab-active { box-shadow: 0 1px 3px rgba(0,0,0,.04); }
-
-/* Dark Mode */
-.dark-mode {
-  --bg: #111113;
-  --g50: #1C1C1E;
-  --g100: #232326;
-  --g200: #2E2E32;
-  --g300: #3A3A3E;
-  --g400: #5A5A5E;
-  --g500: #8E8E93;
-  --g600: #AEAEB2;
-  --g700: #D1D1D6;
-  --g800: #E5E5EA;
-  --g900: #F2F2F7;
-  --card-border: rgba(255, 255, 255, 0.06);
-  --card-shadow: 0 1px 2px rgba(0,0,0,.2);
-}
-.dark-mode { background: var(--bg); color: var(--g900); }
-.dark-mode nav { background: #111113 !important; border-color: var(--g200) !important; }
-.dark-mode input, .dark-mode textarea, .dark-mode select {
-  background: var(--g100) !important; color: var(--g900) !important; border-color: var(--g200) !important;
-}
-.dark-mode button { color: var(--g700); }
-.dark-mode .dark-card { background: var(--g50) !important; border-color: var(--g200) !important; }
