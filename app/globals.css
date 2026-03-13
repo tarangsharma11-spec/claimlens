@@ -88,3 +88,6 @@ input:focus, textarea:focus, select:focus {
 
 @keyframes skeleton-pulse{0%{opacity:.6}50%{opacity:.3}100%{opacity:.6}}
 .skel{background:var(--g100);border-radius:8px;animation:skeleton-pulse 1.5s ease-in-out infinite}
+
+.wsib-tip{position:relative;border-bottom:1px dashed var(--g300);cursor:help;display:inline}
+.wsib-tip:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--g900);color:#fff;padding:6px 10px;border-radius:8px;font-size:11px;white-space:nowrap;max-width:280px;white-space:normal;z-index:100;pointer-events:none;line-height:1.4;box-shadow:0 4px 12px rgba(0,0,0,.15)}
