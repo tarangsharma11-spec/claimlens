@@ -585,7 +585,7 @@ return(<div style={{padding:"14px 16px",background:"#fff",borderRadius:12,border
 <span style={{fontSize:13,color:"var(--g700)"}}>{check}</span>
 </div>)})}
 </div>
-{latest.snippet&&<div style={{fontSize:12,color:"var(--g600)",lineHeight:1.5,marginBottom:10}}>{latest.snippet.slice(0,200)}...</div>}
+{latest.snippet&&<div style={{fontSize:12,color:"var(--g600)",lineHeight:1.5,marginBottom:10}}>{latest.snippet.slice(0,200)}{"..."}</div>}
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{(latest.opmRefs||["OPM 11-01-01","OPM 15-02"]).map((ref,i)=><span key={i} style={{padding:"3px 10px",borderRadius:8,fontSize:11,fontWeight:600,color:"var(--blue)",background:"var(--blue-light)",border:"1px solid var(--blue-border)",fontFamily:"'DM Mono',monospace"}}>{ref}</span>)}</div>
 </div>)})()}
 
