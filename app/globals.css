@@ -85,3 +85,6 @@ input:focus, textarea:focus, select:focus {
 
 /* Tab indicator animation */
 .tab-active { box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+
+@keyframes skeleton-pulse{0%{opacity:.6}50%{opacity:.3}100%{opacity:.6}}
+.skel{background:var(--g100);border-radius:8px;animation:skeleton-pulse 1.5s ease-in-out infinite}

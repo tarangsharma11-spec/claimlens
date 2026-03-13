@@ -190,7 +190,24 @@ export default function LoginPage() {
       </section>
 
       {/* AUTH */}
-      <section id="auth" ref={authRef} style={{ padding: "80px 0", background: "#FAFBFC" }}>
+      
+<section style={{padding:"80px 24px",background:"#fff"}}>
+<div style={{maxWidth:1000,margin:"0 auto",textAlign:"center"}}>
+<div style={{fontSize:12,fontWeight:700,color:"#3B5EC0",textTransform:"uppercase",letterSpacing:2,marginBottom:12}}>Trusted By Professionals</div>
+<h2 style={{fontSize:"clamp(28px, 4vw, 36px)",fontWeight:800,letterSpacing:-1,marginBottom:40}}>What our users are saying</h2>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:20}}>
+{[{q:"CaseAssist cut our claim review time by over 60%. The Five Point Check analysis is incredibly thorough and cites the exact OPM policies.",n:"Sarah M.",r:"WC Paralegal",c:"Toronto Injury Law"},{q:"As an HR manager handling 50+ claims a year, the workflow tracking and deadline alerts have been a game changer. I never miss a filing deadline.",n:"David K.",r:"HR Director",c:"Ontario Manufacturing"},{q:"After my workplace injury, I was lost navigating WSIB. CaseAssist helped me understand exactly what was happening with my claim.",n:"Maria L.",r:"Injured Worker",c:"Mississauga, ON"}].map((t,i)=>(
+<div key={i} style={{padding:"28px 24px",background:"var(--bg)",borderRadius:16,border:"1px solid var(--card-border)",textAlign:"left"}}>
+<div style={{fontSize:14,color:"var(--g700)",lineHeight:1.7,marginBottom:16,fontStyle:"italic"}}>{'"'+t.q+'"'}</div>
+<div style={{display:"flex",alignItems:"center",gap:10}}>
+<div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg, #1A1040, #3B5EC0)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:700}}>{t.n.charAt(0)}</div>
+<div><div style={{fontSize:13,fontWeight:600,color:"var(--g800)"}}>{t.n}</div><div style={{fontSize:11,color:"var(--g500)"}}>{t.r}, {t.c}</div></div>
+</div>
+</div>))}
+</div>
+</div>
+</section>
+<section id="auth" ref={authRef} style={{ padding: "80px 0", background: "#FAFBFC" }}>
         <div className="sec">
           <div className="auth-split" style={{ display: "flex", gap: 60, alignItems: "center", maxWidth: 900, margin: "0 auto" }}>
             <div className="auth-left" style={{ flex: 1 }}>
