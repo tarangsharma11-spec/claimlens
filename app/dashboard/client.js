@@ -433,9 +433,18 @@ return(<><style jsx global>{`
 
 {/* LEFT SIDEBAR */}
 <div style={{display:"flex",flex:1,overflow:"hidden"}}>
-<div onMouseEnter={()=>setSideHover(true)} onMouseLeave={()=>setSideHover(false)} className="desktop-nav" style={{width:sideHover?180:52,flexShrink:0,background:"linear-gradient(180deg, #0062CC 0%, #0088F0 40%, #00B4D8 70%, #2EC4B6 100%)",borderRight:"none",display:"flex",flexDirection:"column",padding:"12px 0",transition:"width .2s cubic-bezier(.16,1,.3,1)",overflow:"hidden",zIndex:95}}>
+<div onMouseEnter={()=>setSideHover(true)} onMouseLeave={()=>setSideHover(false)} className="desktop-nav" style={{width:sideHover?180:52,flexShrink:0,background:"linear-gradient(180deg, #003D7A 0%, #005BA8 35%, #007A9E 65%, #1A8A7D 100%)",borderRight:"none",display:"flex",flexDirection:"column",padding:"12px 0",transition:"width .2s cubic-bezier(.16,1,.3,1)",overflow:"hidden",zIndex:95}}>
 <div style={{padding:"0 10px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:8,overflow:"hidden"}} onClick={()=>nav("home")}>
-<div style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg></div>
+<div style={{width:32,height:32,flexShrink:0}}><svg width="32" height="32" viewBox="0 0 80 90" fill="none">
+<defs><linearGradient id="slogo" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stopColor="#003D7A"/><stop offset="100%" stopColor="#006B8F"/></linearGradient></defs>
+<rect x="16" y="16" width="54" height="64" rx="12" fill="#1A8A7D" opacity="0.6"/>
+<rect x="10" y="10" width="54" height="64" rx="12" fill="#007A9E" opacity="0.75"/>
+<rect x="4" y="4" width="54" height="64" rx="12" fill="url(#slogo)"/>
+<line x1="16" y1="22" x2="44" y2="22" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.7"/>
+<line x1="16" y1="34" x2="38" y2="34" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.5"/>
+<line x1="16" y1="46" x2="32" y2="46" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.35"/>
+<path d="M42 19L45.5 22.5L52 15" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/>
+</svg></div>
 {sideHover&&<span style={{fontSize:14,fontWeight:700,color:"#fff",whiteSpace:"nowrap",letterSpacing:-.3}}>CaseAssist</span>}
 </div>
 
@@ -528,7 +537,7 @@ return(<><style jsx global>{`
 {/* Right sidebar: Upcoming + Warnings */}
 <div>
 {/* Welcome card */}
-<div style={{padding:"16px 18px",background:"linear-gradient(135deg, #0062CC 0%, #00B4D8 100%)",borderRadius:16,marginBottom:10,color:"#fff"}}>
+<div style={{padding:"16px 18px",background:"linear-gradient(135deg, #003D7A 0%, #007A9E 100%)",borderRadius:16,marginBottom:10,color:"#fff"}}>
 <div style={{fontSize:16,fontWeight:800,letterSpacing:-.5}}>Welcome back, {user.name?.split(" ")[0]||"there"}</div>
 <div style={{fontSize:12,opacity:.8,marginTop:2}}>{claims.length} case{claims.length!==1?"s":""}{needsAttention.length>0?" · "+needsAttention.length+" need attention":""}</div>
 <div style={{display:"flex",gap:6,marginTop:10}}>
