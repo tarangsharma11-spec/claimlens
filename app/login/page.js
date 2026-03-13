@@ -137,7 +137,7 @@ export default function LoginPage() {
           </div>
           <div className="journey-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, position: "relative" }}>
             <div style={{ position: "absolute", top: 28, left: "10%", right: "10%", height: 3, background: "linear-gradient(90deg, #0071E3, #34C759)", borderRadius: 2, zIndex: 0 }} />
-            {[{ n: "1", l: "New", d: "Upload docs, run first analysis", c: "#86868B" }, { n: "2", l: "Review", d: "Compliance checks, RTW assessment", c: "#0071E3" }, { n: "3", l: "Investigate", d: "Gather evidence, detect contradictions", c: "#FF9500" }, { n: "4", l: "Decision", d: "Approve, deny, or appeal", c: "#34C759" }, { n: "5", l: "Closed", d: "Archive with full audit trail", c: "#48484A" }].map((s, i) => (
+            {[{ n: "1", l: "Report", d: "File Form 6 & 7, document injury", c: "#3B5EC0" }, { n: "2", l: "Contact", d: "Three-point: worker, employer, medical", c: "#6C5CE7" }, { n: "3", l: "Evidence", d: "Upload Form 8, medical records", c: "#0071E3" }, { n: "4", l: "Analyze", d: "Run AI Five Point Check", c: "#FF9500" }, { n: "5", l: "Decide", d: "Review ruling, calculate benefits", c: "#28A745" }, { n: "6", l: "RTW", d: "Modified duties, return to work", c: "#00C7BE" }, { n: "7", l: "Resolve", d: "Close claim or begin appeal", c: "#6E6E73" }].map((s, i) => (
               <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", zIndex: 1 }}>
                 <div style={{ width: 56, height: 56, borderRadius: "50%", background: s.c, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 800, marginBottom: 12, boxShadow: `0 4px 16px ${s.c}40`, border: "4px solid #fff" }}>{s.n}</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#1D1D1F", marginBottom: 4 }}>{s.l}</div>
@@ -157,9 +157,9 @@ export default function LoginPage() {
           </div>
           <div className="who-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
             {[
-              { icon: "\u2696\uFE0F", title: "Injury Lawyers", desc: "Assess claim viability, build OPM-cited arguments, and generate hearing prep packages.", items: ["Claim strength scoring", "Appeal success prediction", "Case memo generation", "Hearing prep briefs"] },
-              { icon: "\uD83C\uDFE2", title: "Employers & HR", desc: "Ensure Form 7 compliance, track RTW progress, and understand benefit obligations.", items: ["Filing deadline alerts", "RTW benchmarking", "Benefit calculator", "Compliance monitoring"] },
-              { icon: "\uD83D\uDCCB", title: "Adjudicators & TPAs", desc: "Streamline caseloads with red flag detection, document classification, and evidence gap analysis.", items: ["Red flag detection", "Document auto-tagging", "What's missing checklist", "Portfolio analytics"] },
+              { icon: "\u2696\uFE0F", title: "Injury Lawyers", desc: "AI-powered ruling predictions, letter generation, demand packages, and claim valuation.", items: ["AI ruling predictions", "Demand package builder", "Letter generation", "Claim valuation calculator"] },
+              { icon: "\uD83C\uDFE2", title: "Employers & HR", desc: "Filing compliance, modified duties tracking, benefit calculations, and direct email from the platform.", items: ["Filing deadline alerts", "Modified duties tracking", "Three-point contact tracker", "Email integration"] },
+              { icon: "\uD83D\uDCCB", title: "Adjudicators & TPAs", desc: "Kanban claim board, AI briefs, risk scoring, smart warnings, and 7-step workflow tracking.", items: ["Claim board pipeline", "Risk assessment scoring", "What's missing checklist", "Workflow progress tracking"] },
             ].map((w, i) => (
               <div key={i} style={{ padding: 28, background: "#fff", borderRadius: 16, border: "1px solid #E8E8ED" }}>
                 <div style={{ fontSize: 32, marginBottom: 14 }}>{w.icon}</div>
@@ -214,7 +214,7 @@ export default function LoginPage() {
               <div style={{ fontSize: 12, fontWeight: 700, color: "#3B5EC0", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Get Started</div>
               <h2 style={{ fontSize: 36, fontWeight: 800, letterSpacing: -1.5, color: "#1D1D1F", marginBottom: 16 }}>Ready to analyze<br />your first claim?</h2>
               <p style={{ fontSize: 15, color: "#6E6E73", lineHeight: 1.65, marginBottom: 24 }}>Sign in or create an account. All you need is an access code from your administrator.</p>
-              {["\u2713 AI-powered Five Point Check", "\u2713 Deadline tracking & notifications", "\u2713 Document intelligence & auto-tagging", "\u2713 Benefit calculator & cost forecasting", "\u2713 Export cases as JSON or CSV"].map((x, i) => (<div key={i} style={{ fontSize: 14, color: "#48484A", fontWeight: 500, marginBottom: 8 }}>{x}</div>))}
+              {["\u2713 AI-powered Five Point Check", "\u2713 Deadline tracking & notifications", "\u2713 Document intelligence & auto-tagging", "\u2713 Three-point contact tracker & cost forecasting", "\u2713 Export cases as JSON or CSV"].map((x, i) => (<div key={i} style={{ fontSize: 14, color: "#48484A", fontWeight: 500, marginBottom: 8 }}>{x}</div>))}
             </div>
             <div style={{ width: 400, flexShrink: 0 }}>
               <div style={{ display: "flex", gap: 2, padding: 3, background: "#E8E8ED", borderRadius: 12, marginBottom: 20 }}>
