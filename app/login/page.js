@@ -34,8 +34,17 @@ export default function LoginPage() {
       <nav style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(250,251,252,.85)", backdropFilter: "saturate(180%) blur(20px)", borderBottom: "1px solid rgba(0,0,0,.04)" }}>
         <div className="sec" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: "#1D1D1F", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+            <div style={{ width: 34, height: 34 }}>
+              <svg width="34" height="34" viewBox="0 0 80 90" fill="none">
+                <defs><linearGradient id="navl" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stopColor="#1A1040"/><stop offset="100%" stopColor="#2E3580"/></linearGradient></defs>
+                <rect x="16" y="16" width="54" height="64" rx="12" fill="#3B5EC0" opacity="0.5"/>
+                <rect x="10" y="10" width="54" height="64" rx="12" fill="#2E3580" opacity="0.7"/>
+                <rect x="4" y="4" width="54" height="64" rx="12" fill="url(#navl)"/>
+                <line x1="16" y1="22" x2="44" y2="22" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.7"/>
+                <line x1="16" y1="34" x2="38" y2="34" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.5"/>
+                <line x1="16" y1="46" x2="32" y2="46" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.35"/>
+                <path d="M42 19L45.5 22.5L52 15" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/>
+              </svg>
             </div>
             <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: "#1D1D1F" }}>CaseAssist</span>
           </div>
@@ -238,7 +247,7 @@ export default function LoginPage() {
       {/* FOOTER */}
       <footer style={{ padding: "32px 0", background: "#fff", borderTop: "1px solid #E8E8ED" }}>
         <div className="sec" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 24, height: 24, borderRadius: 6, background: "#1D1D1F", display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg></div><span style={{ fontSize: 14, fontWeight: 700 }}>CaseAssist</span></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 24, height: 24 }}><svg width="24" height="24" viewBox="0 0 80 90" fill="none"><defs><linearGradient id="fl" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stopColor="#1A1040"/><stop offset="100%" stopColor="#2E3580"/></linearGradient></defs><rect x="16" y="16" width="54" height="64" rx="12" fill="#3B5EC0" opacity="0.5"/><rect x="10" y="10" width="54" height="64" rx="12" fill="#2E3580" opacity="0.7"/><rect x="4" y="4" width="54" height="64" rx="12" fill="url(#fl)"/><line x1="16" y1="22" x2="44" y2="22" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.7"/><line x1="16" y1="34" x2="38" y2="34" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.5"/><line x1="16" y1="46" x2="32" y2="46" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.35"/><path d="M42 19L45.5 22.5L52 15" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/></svg></div><span style={{ fontSize: 14, fontWeight: 700 }}>CaseAssist</span></div>
           <p style={{ fontSize: 11, color: "#AEAEB2" }}>Advisory tool only. Final decisions by authorized WSIB adjudicators. {"\u00A9"} 2026</p>
         </div>
       </footer>
