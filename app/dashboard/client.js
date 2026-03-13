@@ -591,6 +591,7 @@ return(<div style={{padding:"14px 16px",background:"#fff",borderRadius:12,border
 
 <div style={{marginBottom:16}}><div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Analysis History</div>{active.analyses.slice().reverse().map((a,i)=><div key={i} style={{padding:12,background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:13,fontWeight:600,color:a.ruling==="Allow"?"var(--green)":a.ruling==="Deny"?"var(--red)":"var(--orange)"}}>● {a.ruling}</span><span style={{fontSize:11,color:"var(--g400)"}}>{fmtTime(a.date)}</span></div><div style={{fontSize:12,color:"var(--g500)",lineHeight:1.4}}>{a.snippet?.slice(0,120)}…</div></div>)}</div>}
 </>}
+</>}
 
 {detailTab==="documents"&&<>
 <input ref={fRef} type="file" multiple onChange={(e)=>{const nf2=Array.from(e.target.files);const c={...active};c.documents=[...(c.documents||[]),...nf2.map(f=>({name:f.name,tag:guessDocType(f.name),addedAt:new Date().toISOString()}))];c.timeline=[...(c.timeline||[]),...nf2.map(f=>({date:new Date().toISOString(),type:"document",note:`Uploaded: ${f.name}`}))];saveClaim(c);nf2.forEach(f=>{const r=new FileReader();r.onload=ev=>setFc(p=>({...p,[f.name]:ev.target.result}));r.readAsText(f)});setFiles(p=>[...p,...nf2]);e.target.value=""}} style={{display:"none"}} accept=".txt,.pdf,.doc,.docx,.html,.md,.rtf"/>
