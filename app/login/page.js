@@ -49,6 +49,7 @@ export default function LoginPage() {
             <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: "#1D1D1F" }}>CaseAssist</span>
           </div>
           <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+            <a href="/pricing" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Pricing</a>
             <span onClick={() => scrollTo("features")} style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", cursor: "pointer" }}>Features</span>
             <span onClick={() => scrollTo("journey")} style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", cursor: "pointer" }}>How It Works</span>
             <span onClick={() => scrollTo("who")} style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", cursor: "pointer" }}>Who For</span>
