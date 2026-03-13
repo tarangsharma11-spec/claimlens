@@ -26,7 +26,7 @@ export default function LoginPage() {
         @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
         *{box-sizing:border-box;margin:0;padding:0}input,button{font-family:inherit}::placeholder{color:#AEAEB2}
         .sec{max-width:1120px;margin:0 auto;padding:0 28px}
-        @media(max-width:900px){.hero-grid{flex-direction:column!important;text-align:center}.hero-grid>div:first-child{align-items:center!important}.feat-grid{grid-template-columns:1fr 1fr!important}.journey-grid{grid-template-columns:1fr!important;gap:24px!important}.journey-grid>div>div:first-child{display:none}.who-grid{grid-template-columns:1fr!important}.auth-split{flex-direction:column!important}.auth-left{display:none!important}}
+        @media(max-width:900px){.hero-grid{flex-direction:column!important;text-align:center}.hero-grid>div:first-child{align-items:center!important}.feat-grid{grid-template-columns:1fr 1fr!important}.journey-grid{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}.journey-grid>div>div:first-child{display:none}.who-grid{grid-template-columns:1fr!important}.auth-split{flex-direction:column!important}.auth-left{display:none!important}}
         @media(max-width:600px){.feat-grid{grid-template-columns:1fr!important}.stats-grid{grid-template-columns:1fr 1fr!important}}
       `}</style>
 
@@ -61,7 +61,7 @@ export default function LoginPage() {
                 Claims intelligence,<br /><span style={{ background: "linear-gradient(135deg, #0071E3, #34C759)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>made simple.</span>
               </h1>
               <p style={{ fontSize: 18, color: "#6E6E73", lineHeight: 1.65, maxWidth: 480, marginBottom: 32 }}>
-                Analyze workers' compensation claims against the WSIB OPM. Get AI ruling predictions, automated compliance checks, and guided return-to-work tracking.
+                Analyze workers' compensation claims against the WSIB OPM. Get AI ruling predictions, guided workflow tracking, email integration, and smart risk alerts.
               </p>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <button onClick={() => scrollTo("auth")} style={{ padding: "14px 32px", borderRadius: 980, fontSize: 16, fontWeight: 700, border: "none", background: "#0071E3", color: "#fff", cursor: "pointer", boxShadow: "0 4px 16px rgba(0,113,227,.3)" }}>Start analyzing claims</button>
@@ -135,7 +135,7 @@ export default function LoginPage() {
             <div style={{ fontSize: 12, fontWeight: 700, color: "#3B5EC0", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>The Claims Journey</div>
             <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, letterSpacing: -1.5, color: "#1D1D1F", marginBottom: 14 }}>Guided through every step</h2>
           </div>
-          <div className="journey-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, position: "relative" }}>
+          <div className="journey-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 0, position: "relative" }}>
             <div style={{ position: "absolute", top: 28, left: "10%", right: "10%", height: 3, background: "linear-gradient(90deg, #0071E3, #34C759)", borderRadius: 2, zIndex: 0 }} />
             {[{ n: "1", l: "Report", d: "File Form 6 & 7, document injury", c: "#3B5EC0" }, { n: "2", l: "Contact", d: "Three-point: worker, employer, medical", c: "#6C5CE7" }, { n: "3", l: "Evidence", d: "Upload Form 8, medical records", c: "#0071E3" }, { n: "4", l: "Analyze", d: "Run AI Five Point Check", c: "#FF9500" }, { n: "5", l: "Decide", d: "Review ruling, calculate benefits", c: "#28A745" }, { n: "6", l: "RTW", d: "Modified duties, return to work", c: "#00C7BE" }, { n: "7", l: "Resolve", d: "Close claim or begin appeal", c: "#6E6E73" }].map((s, i) => (
               <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", zIndex: 1 }}>
