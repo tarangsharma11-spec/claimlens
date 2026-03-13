@@ -102,11 +102,11 @@ export default function LoginPage() {
       <section id="features" style={{ padding: "80px 0", background: "#FAFBFC" }}>
         <div className="sec">
           <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#0071E3", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Platform Features</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#3B5EC0", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Platform Features</div>
             <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, letterSpacing: -1.5, color: "#1D1D1F", marginBottom: 14 }}>Everything you need to<br />adjudicate with confidence</h2>
-            <p style={{ fontSize: 16, color: "#6E6E73", maxWidth: 520, margin: "0 auto" }}>From first report of injury to appeal hearing, CaseAssist guides every step.</p>
+            <p style={{ fontSize: 16, color: "#6E6E73", maxWidth: 520, margin: "0 auto" }}>AI-powered workflow, email integration, smart warnings, and full claim lifecycle management.</p>
           </div>
-          <div className="feat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          <div className="feat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
             {[
               { icon: "\u2696\uFE0F", title: "AI Ruling Predictions", desc: "Five Point Check against the full OPM. Get Allow/Deny/Investigate with cited policy sections.", c: "#0071E3" },
               { icon: "\uD83D\uDCC4", title: "Document Intelligence", desc: "Upload forms and reports. Auto-tagged by type with entity extraction and Q&A.", c: "#34C759" },
@@ -132,8 +132,8 @@ export default function LoginPage() {
       <section id="journey" style={{ padding: "80px 0", background: "#fff" }}>
         <div className="sec">
           <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#0071E3", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>The Claims Journey</div>
-            <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, letterSpacing: -1.5, color: "#1D1D1F", marginBottom: 14 }}>Guided from intake to resolution</h2>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#3B5EC0", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>The Claims Journey</div>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, letterSpacing: -1.5, color: "#1D1D1F", marginBottom: 14 }}>Guided through every step</h2>
           </div>
           <div className="journey-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, position: "relative" }}>
             <div style={{ position: "absolute", top: 28, left: "10%", right: "10%", height: 3, background: "linear-gradient(90deg, #0071E3, #34C759)", borderRadius: 2, zIndex: 0 }} />
@@ -152,7 +152,7 @@ export default function LoginPage() {
       <section id="who" style={{ padding: "80px 0", background: "#FAFBFC" }}>
         <div className="sec">
           <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#0071E3", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Who It's For</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#3B5EC0", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Who It's For</div>
             <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, letterSpacing: -1.5, color: "#1D1D1F" }}>Built for the claims ecosystem</h2>
           </div>
           <div className="who-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
@@ -175,7 +175,7 @@ export default function LoginPage() {
       {/* DATA SOURCES */}
       <section style={{ padding: "60px 0", background: "#1D1D1F", color: "#fff" }}>
         <div className="sec" style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#0071E3", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Knowledge Base</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#3B5EC0", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Knowledge Base</div>
           <h2 style={{ fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, letterSpacing: -1.2, marginBottom: 36 }}>Cross-referencing authoritative sources</h2>
           <div style={{ display: "flex", justifyContent: "center", gap: 32, flexWrap: "wrap" }}>
             {[{ l: "WSIB OPM", s: "Operational Policy Manual", i: "\uD83D\uDCDA" }, { l: "ICD-10", s: "Medical Classification", i: "\uD83C\uDFE5" }, { l: "ODG", s: "Disability Guidelines", i: "\uD83D\uDCC4" }, { l: "PIPEDA", s: "Privacy Compliance", i: "\uD83D\uDD12" }, { l: "WSIA", s: "Ontario Legislation", i: "\u2696\uFE0F" }].map((x, i) => (
@@ -211,7 +211,7 @@ export default function LoginPage() {
         <div className="sec">
           <div className="auth-split" style={{ display: "flex", gap: 60, alignItems: "center", maxWidth: 900, margin: "0 auto" }}>
             <div className="auth-left" style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#0071E3", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Get Started</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#3B5EC0", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Get Started</div>
               <h2 style={{ fontSize: 36, fontWeight: 800, letterSpacing: -1.5, color: "#1D1D1F", marginBottom: 16 }}>Ready to analyze<br />your first claim?</h2>
               <p style={{ fontSize: 15, color: "#6E6E73", lineHeight: 1.65, marginBottom: 24 }}>Sign in or create an account. All you need is an access code from your administrator.</p>
               {["\u2713 AI-powered Five Point Check", "\u2713 Deadline tracking & notifications", "\u2713 Document intelligence & auto-tagging", "\u2713 Benefit calculator & cost forecasting", "\u2713 Export cases as JSON or CSV"].map((x, i) => (<div key={i} style={{ fontSize: 14, color: "#48484A", fontWeight: 500, marginBottom: 8 }}>{x}</div>))}
