@@ -299,6 +299,13 @@ export default function PricingPage() {
       <section style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px 60px" }}>
         <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, textAlign: "center", marginBottom: 32 }}>Compare plans in detail</h2>
         <div className="compare-table" style={{ borderRadius: 16, border: "1px solid var(--card-border)", overflow: "hidden", background: "#fff" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 80px 80px", padding: "14px 20px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: .5, color: "var(--g500)", background: "var(--g50)", borderBottom: "2px solid var(--g200)" }}>
+            <span>Feature</span>
+            <span style={{ textAlign: "center" }}>Free</span>
+            <span style={{ textAlign: "center" }}>Starter</span>
+            <span style={{ textAlign: "center", color: "#3B5EC0" }}>Pro</span>
+            <span style={{ textAlign: "center" }}>Enterprise</span>
+          </div>
           {[
             { feature: "Active cases", free: "3", starter: "25", pro: "Unlimited", enterprise: "Unlimited" },
             { feature: "AI analyses / month", free: "5", starter: "50", pro: "Unlimited", enterprise: "Unlimited" },
