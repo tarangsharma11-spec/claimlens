@@ -58,6 +58,22 @@ export async function POST(request) {
   }
 
   try {
+    // Rate limiting check
+    let orgPlan = "free";
+    let orgId = null;
+    try {
+      const { getMembership, checkRateLimit, trackUsage } = await import("@/lib/db");
+      const membership = await getMembership(session.user.email);
+      if (membership) {
+        orgId = membership.org_id;
+        orgPlan = membership.org_plan || "free";
+        const limit = await checkRateLimit(orgId, orgPlan, "ai_analysis");
+        if (!limit.allowed) {
+          return NextResponse.json({ error: limit.message, rateLimited: true }, { status: 429 });
+        }
+      }
+    } catch {}
+
     const { messages, documentTexts, claimContext, stream: wantStream } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
@@ -198,6 +214,14 @@ export async function POST(request) {
     }
 
     const reply = data.content?.map((c) => c.text || "").join("") || "No response.";
+
+    // Track usage (non-blocking)
+    if (orgId) {
+      try {
+        const { trackUsage } = await import("@/lib/db");
+        await trackUsage(orgId, { email: session.user.email, action: "ai_analysis", tokensUsed: data.usage?.output_tokens || 0 });
+      } catch {}
+    }
 
     return NextResponse.json({
       reply,

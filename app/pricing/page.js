@@ -4,15 +4,15 @@ import Link from "next/link";
 
 const PLANS = [
   {
-    id: "starter",
-    name: "Starter",
+    id: "free",
+    name: "Free",
     price: 0,
     period: "forever",
     desc: "For individual workers navigating a claim",
     cta: "Get Started Free",
     features: [
       "3 active cases",
-      "AI ruling predictions",
+      "5 AI analyses per month",
       "Document uploads (10 per case)",
       "Five Point Check analysis",
       "Basic workflow tracking",
@@ -25,47 +25,63 @@ const PLANS = [
     ],
   },
   {
+    id: "starter",
+    name: "Starter",
+    price: 49,
+    period: "/month",
+    desc: "For solo practitioners getting started",
+    cta: "Start Free Trial",
+    features: [
+      "25 active cases",
+      "50 AI analyses per month",
+      "3 team members",
+      "All AI tools (9 expert tools)",
+      "Email integration",
+      "Unlimited document uploads",
+      "Claim board (Kanban)",
+      "CSV import & export",
+      "PDF export",
+    ],
+    limits: [],
+  },
+  {
     id: "pro",
     name: "Pro",
-    price: 79,
+    price: 149,
     period: "/month",
-    desc: "For injury lawyers and HR professionals",
-    cta: "Start 14-Day Free Trial",
+    desc: "For injury law firms and HR teams",
+    cta: "Start Free Trial",
     popular: true,
     features: [
       "Unlimited cases",
-      "All AI tools (9 expert tools)",
-      "Email integration via Resend",
-      "Unlimited document uploads",
-      "Claim board (Kanban pipeline)",
-      "CSV import & export",
-      "Case comparison",
-      "PDF export",
+      "Unlimited AI analyses",
+      "10 team members",
+      "Case assignment & sharing",
       "Medical provider tracking",
       "Benefit & AWW calculator",
+      "Case comparison",
+      "Team analytics",
       "Priority support",
     ],
     limits: [],
   },
   {
-    id: "firm",
-    name: "Firm",
-    price: 299,
+    id: "enterprise",
+    name: "Enterprise",
+    price: 499,
     period: "/month",
-    desc: "For firms and TPA offices managing caseloads",
+    desc: "For firms, TPAs, and organizations at scale",
     cta: "Contact Sales",
     features: [
       "Everything in Pro",
-      "Up to 5 team members",
-      "Case assignment & routing",
-      "Shared workspace",
-      "Team analytics dashboard",
-      "Bulk operations",
-      "Audit log",
+      "Up to 50 team members",
+      "API access",
       "Role-based permissions",
+      "Audit log & activity feed",
       "Custom branding",
       "Dedicated onboarding",
-      "SLA & priority support",
+      "SSO enforcement",
+      "SLA & dedicated support",
     ],
     limits: [],
   },
@@ -73,11 +89,11 @@ const PLANS = [
 
 const FAQ = [
   { q: "Can I switch plans later?", a: "Yes, you can upgrade or downgrade at any time. Changes take effect on your next billing cycle. If you upgrade mid-cycle, you'll be charged the prorated difference." },
-  { q: "Is there a free trial?", a: "The Pro plan includes a 14-day free trial. No credit card required to start. You'll only be charged after the trial ends if you choose to continue." },
-  { q: "What payment methods do you accept?", a: "We accept all major credit cards (Visa, Mastercard, Amex) through our secure payment processor, Stripe. All transactions are encrypted and PCI compliant." },
-  { q: "Is my data secure?", a: "CaseAssist is 100% PIPEDA compliant. No PII is included in AI outputs. All data is encrypted at rest and in transit. We never share your data with third parties." },
-  { q: "Can I cancel anytime?", a: "Yes, cancel anytime from your billing settings. Your access continues until the end of your current billing period. No cancellation fees." },
-  { q: "Do you offer discounts for annual billing?", a: "Yes! Annual billing saves you 20%. Pro annual is $63/month ($756/year) and Firm annual is $239/month ($2,868/year)." },
+  { q: "Is there a free trial?", a: "Starter and Pro plans include a 14-day free trial. No credit card required to start." },
+  { q: "What payment methods do you accept?", a: "We accept all major credit cards (Visa, Mastercard, Amex) through Stripe. All transactions are encrypted and PCI compliant." },
+  { q: "Is my data secure?", a: "CaseAssist is PIPEDA compliant. No PII is included in AI outputs. All data is encrypted at rest and in transit via Vercel Postgres." },
+  { q: "Can I cancel anytime?", a: "Yes, cancel anytime from your billing settings. Your access continues until the end of your current billing period." },
+  { q: "Do you offer annual billing?", a: "Yes! Annual billing saves you 20%. Starter annual is $39/mo, Pro annual is $119/mo, Enterprise annual is $399/mo." },
 ];
 
 export default function PricingPage() {
@@ -87,12 +103,12 @@ export default function PricingPage() {
   const [mobileNav, setMobileNav] = useState(false);
 
   async function handleCheckout(planId) {
-    if (planId === "starter") {
+    if (planId === "free") {
       window.location.href = "/login";
       return;
     }
-    if (planId === "firm") {
-      window.location.href = "mailto:hello@caseassist.ca?subject=CaseAssist Firm Plan Inquiry";
+    if (planId === "enterprise") {
+      window.location.href = "mailto:hello@caseassist.ca?subject=CaseAssist Enterprise Plan Inquiry";
       return;
     }
     setLoading(planId);
@@ -243,8 +259,8 @@ export default function PricingPage() {
                 fontSize: 14,
                 fontWeight: 700,
                 border: plan.popular ? "none" : "1px solid var(--card-border)",
-                background: plan.popular ? "#fff" : plan.id === "firm" ? "transparent" : "#1D1D1F",
-                color: plan.popular ? "#251A5E" : plan.id === "firm" ? "#1D1D1F" : "#fff",
+                background: plan.popular ? "#fff" : plan.id === "enterprise" ? "transparent" : "#1D1D1F",
+                color: plan.popular ? "#251A5E" : plan.id === "enterprise" ? "#1D1D1F" : "#fff",
                 cursor: loading === plan.id ? "wait" : "pointer",
                 marginBottom: 24,
                 opacity: loading === plan.id ? 0.6 : 1,
@@ -254,7 +270,7 @@ export default function PricingPage() {
             </button>
 
             <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.5, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
-              {plan.id === "firm" ? "Everything in Pro, plus:" : "Includes:"}
+              {plan.id === "enterprise" ? "Everything in Pro, plus:" : "Includes:"}
             </div>
 
             {plan.features.map((f, i) => (
@@ -283,30 +299,32 @@ export default function PricingPage() {
         <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, textAlign: "center", marginBottom: 32 }}>Compare plans in detail</h2>
         <div className="compare-table" style={{ borderRadius: 16, border: "1px solid var(--card-border)", overflow: "hidden", background: "#fff" }}>
           {[
-            { feature: "Active cases", starter: "3", pro: "Unlimited", firm: "Unlimited" },
-            { feature: "AI ruling predictions", starter: true, pro: true, firm: true },
-            { feature: "Five Point Check", starter: true, pro: true, firm: true },
-            { feature: "Document uploads", starter: "10/case", pro: "Unlimited", firm: "Unlimited" },
-            { feature: "Workflow tracking", starter: "Basic", pro: "Full 7-step", firm: "Full 7-step" },
-            { feature: "Claim board (Kanban)", starter: false, pro: true, firm: true },
-            { feature: "AI Tools (9 expert tools)", starter: false, pro: true, firm: true },
-            { feature: "Email integration", starter: false, pro: true, firm: true },
-            { feature: "CSV import/export", starter: false, pro: true, firm: true },
-            { feature: "Case comparison", starter: false, pro: true, firm: true },
-            { feature: "PDF export", starter: false, pro: true, firm: true },
-            { feature: "Medical providers", starter: false, pro: true, firm: true },
-            { feature: "Benefit calculator", starter: "Basic", pro: "Full + AWW", firm: "Full + AWW" },
-            { feature: "Team members", starter: "1", pro: "1", firm: "Up to 5" },
-            { feature: "Case assignment", starter: false, pro: false, firm: true },
-            { feature: "Shared workspace", starter: false, pro: false, firm: true },
-            { feature: "Audit log", starter: false, pro: false, firm: true },
-            { feature: "Custom branding", starter: false, pro: false, firm: true },
-            { feature: "Support", starter: "Community", pro: "Priority email", firm: "Dedicated + SLA" },
+            { feature: "Active cases", free: "3", starter: "25", pro: "Unlimited", enterprise: "Unlimited" },
+            { feature: "AI analyses / month", free: "5", starter: "50", pro: "Unlimited", enterprise: "Unlimited" },
+            { feature: "Team members", free: "1", starter: "3", pro: "10", enterprise: "50" },
+            { feature: "Five Point Check", free: true, starter: true, pro: true, enterprise: true },
+            { feature: "Document uploads", free: "10/case", starter: "Unlimited", pro: "Unlimited", enterprise: "Unlimited" },
+            { feature: "Workflow tracking", free: "Basic", starter: "Full 7-step", pro: "Full 7-step", enterprise: "Full 7-step" },
+            { feature: "Claim board (Kanban)", free: false, starter: true, pro: true, enterprise: true },
+            { feature: "AI Tools (9 expert)", free: false, starter: true, pro: true, enterprise: true },
+            { feature: "Email integration", free: false, starter: true, pro: true, enterprise: true },
+            { feature: "CSV import/export", free: false, starter: true, pro: true, enterprise: true },
+            { feature: "PDF export", free: false, starter: true, pro: true, enterprise: true },
+            { feature: "Case sharing", free: false, starter: false, pro: true, enterprise: true },
+            { feature: "Case assignment", free: false, starter: false, pro: true, enterprise: true },
+            { feature: "Medical providers", free: false, starter: false, pro: true, enterprise: true },
+            { feature: "Benefit calculator", free: "Basic", starter: "Basic", pro: "Full + AWW", enterprise: "Full + AWW" },
+            { feature: "Team analytics", free: false, starter: false, pro: true, enterprise: true },
+            { feature: "API access", free: false, starter: false, pro: false, enterprise: true },
+            { feature: "Audit log", free: false, starter: false, pro: false, enterprise: true },
+            { feature: "Custom branding", free: false, starter: false, pro: false, enterprise: true },
+            { feature: "SSO enforcement", free: false, starter: false, pro: false, enterprise: true },
+            { feature: "Support", free: "Community", starter: "Email", pro: "Priority", enterprise: "Dedicated + SLA" },
           ].map((row, i) => (
-            <div key={i} className="compare-row" style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 100px", padding: "10px 20px", fontSize: 13, borderBottom: i < 18 ? "1px solid var(--g100)" : "none", background: i % 2 === 0 ? "#fff" : "var(--g50)" }}>
+            <div key={i} className="compare-row" style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 80px 80px", padding: "10px 20px", fontSize: 13, borderBottom: i < 20 ? "1px solid var(--g100)" : "none", background: i % 2 === 0 ? "#fff" : "var(--g50)" }}>
               <span style={{ fontWeight: 500, color: "var(--g700)" }}>{row.feature}</span>
-              {["starter", "pro", "firm"].map((plan) => (
-                <span key={plan} style={{ textAlign: "center", color: row[plan] === true ? "#28A745" : row[plan] === false ? "var(--g300)" : "var(--g600)", fontWeight: 500 }}>
+              {["free", "starter", "pro", "enterprise"].map((plan) => (
+                <span key={plan} style={{ textAlign: "center", color: row[plan] === true ? "#28A745" : row[plan] === false ? "var(--g300)" : "var(--g600)", fontWeight: 500, fontSize: 12 }}>
                   {row[plan] === true ? "\u2713" : row[plan] === false ? "\u2014" : row[plan]}
                 </span>
               ))}

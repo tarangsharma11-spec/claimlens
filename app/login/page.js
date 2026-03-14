@@ -293,7 +293,7 @@ function LoginContent() {
             <div className="auth-left" style={{ flex: 1 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#3B5EC0", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Get Started</div>
               <h2 style={{ fontSize: 36, fontWeight: 800, letterSpacing: -1.5, color: "#1D1D1F", marginBottom: 16 }}>Ready to analyze<br />your first claim?</h2>
-              <p style={{ fontSize: 15, color: "#6E6E73", lineHeight: 1.65, marginBottom: 24 }}>Sign in or create an account. All you need is an access code from your administrator.</p>
+              <p style={{ fontSize: 15, color: "#6E6E73", lineHeight: 1.65, marginBottom: 24 }}>Sign in or create an account. All you need is an invite code from your administrator.</p>
               {["\u2713 AI-powered Five Point Check", "\u2713 Deadline tracking & notifications", "\u2713 Document intelligence & auto-tagging", "\u2713 Three-point contact tracker & cost forecasting", "\u2713 Export cases as JSON or CSV"].map((x, i) => (<div key={i} style={{ fontSize: 14, color: "#48484A", fontWeight: 500, marginBottom: 8 }}>{x}</div>))}
             </div>
             <div className="auth-card-wrap" style={{ width: 400, maxWidth: "100%", flexShrink: 0 }}>
@@ -315,7 +315,7 @@ function LoginContent() {
                     </>)}
                     <button type="button" onClick={() => { setForgotMode(false); setForgotSent(false); setError(""); }} style={{ width: "100%", marginTop: 10, padding: "10px", borderRadius: 10, border: "none", background: "transparent", color: "#0071E3", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Back to sign in</button>
                   </>) : (<>
-                  {tab === "signup" && (<><label style={lbl}>Access Code</label><input style={inp} type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="Enter your access code" required /><label style={lbl}>Full Name</label><input style={inp} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Jane Smith" /></>)}
+                  {tab === "signup" && (<><label style={lbl}>Invite Code</label><input style={inp} type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="e.g. CA-7X9K-M2P4" required /><label style={lbl}>Full Name</label><input style={inp} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Jane Smith" /></>)}
                   <label style={lbl}>Email</label><input style={inp} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
                   <label style={lbl}>Password</label><input style={inp} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"} required minLength={8} />
                   {tab === "login" && <div style={{ textAlign: "right", marginTop: 4 }}><button type="button" onClick={() => { setForgotMode(true); setError(""); }} style={{ background: "none", border: "none", color: "#0071E3", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>Forgot password?</button></div>}
@@ -336,7 +336,7 @@ function LoginContent() {
                     </button>
                   </div>
                 </>)}
-                {tab === "signup" && <p style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: "#AEAEB2" }}>Need an access code? Contact your firm administrator.</p>}
+                {tab === "signup" && <p style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: "#AEAEB2" }}>Need an invite code? Contact your firm administrator.</p>}
               </div>
             </div>
           </div>

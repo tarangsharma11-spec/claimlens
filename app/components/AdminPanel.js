@@ -3,9 +3,10 @@ import { useState, useEffect } from "react";
 import { ROLES, FEATURES, getFeaturesByCategory } from "@/app/lib/rbac";
 
 const PLAN_DETAILS = {
-  starter: { label: "Starter", price: "Free", seats: 1, color: "#86868B" },
-  pro: { label: "Pro", price: "$79/mo", seats: 5, color: "#0071E3" },
-  firm: { label: "Firm", price: "$299/mo", seats: 25, color: "#1A1040" },
+  free:       { label: "Free",       price: "Free",     seats: 1,  color: "#86868B" },
+  starter:    { label: "Starter",    price: "$49/mo",   seats: 3,  color: "#28A745" },
+  pro:        { label: "Pro",        price: "$149/mo",  seats: 10, color: "#0071E3" },
+  enterprise: { label: "Enterprise", price: "$499/mo",  seats: 50, color: "#1A1040" },
 };
 
 export default function AdminPanel({ currentUser, onClose }) {
@@ -37,7 +38,7 @@ export default function AdminPanel({ currentUser, onClose }) {
     load();
   }, []);
 
-  const plan = PLAN_DETAILS[org?.plan] || PLAN_DETAILS.starter;
+  const plan = PLAN_DETAILS[org?.plan] || PLAN_DETAILS.free;
   const activeMembers = members.filter((m) => m.status !== "disabled");
   const seatsUsed = activeMembers.length;
   const seatsMax = org?.max_seats || plan.seats;
@@ -60,6 +61,7 @@ export default function AdminPanel({ currentUser, onClose }) {
     setInviteLoading(true);
     setInviteStatus(null);
     try {
+      // Create membership + generate invite code
       const res = await fetch("/api/org/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -68,7 +70,9 @@ export default function AdminPanel({ currentUser, onClose }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Invite failed");
 
-      // Send invite email
+      const inviteCode = data.inviteCode || "Contact your admin";
+
+      // Send invite email with unique code
       try {
         await fetch("/api/email", {
           method: "POST",
@@ -76,7 +80,7 @@ export default function AdminPanel({ currentUser, onClose }) {
           body: JSON.stringify({
             to: inviteEmail.trim(),
             subject: `You've been invited to ${org?.name || "CaseAssist"}`,
-            body: `Hi ${inviteName.trim() || inviteEmail.split("@")[0]},\n\n${currentUser?.name || currentUser?.email} has invited you to join ${org?.name || "CaseAssist"} as a ${inviteRole}.\n\nSign up at https://www.caseassist.ca/login to get started.\n\nAccess code: CASEASSIST2026\n\nYou can also sign in with Google if your admin used this email address for the invitation.\n\n— CaseAssist`,
+            body: `Hi ${inviteName.trim() || inviteEmail.split("@")[0]},\n\n${currentUser?.name || currentUser?.email} has invited you to join ${org?.name || "CaseAssist"} as a ${inviteRole}.\n\nSign up at https://www.caseassist.ca/login to get started.\n\nYour invite code: ${inviteCode}\n\nThis code is single-use and expires in 30 days. You can also sign in with Google if your admin used this email address.\n\n— CaseAssist`,
             senderName: currentUser?.name || "CaseAssist",
             senderEmail: currentUser?.email,
           }),
@@ -86,7 +90,7 @@ export default function AdminPanel({ currentUser, onClose }) {
       setMembers((p) => [...p, data.member]);
       setInviteEmail("");
       setInviteName("");
-      setInviteStatus({ type: "success", msg: `Invitation sent to ${inviteEmail}` });
+      setInviteStatus({ type: "success", msg: `Invitation sent to ${inviteEmail} — code: ${inviteCode}` });
     } catch (err) {
       setInviteStatus({ type: "error", msg: err.message });
     }
@@ -226,7 +230,7 @@ export default function AdminPanel({ currentUser, onClose }) {
               </button>
 
               <div style={{ fontSize: 12, color: "#A0A3AB", marginTop: 12, lineHeight: 1.5 }}>
-                The invited user will receive an email with signup instructions. They can sign in with email/password using access code <strong>CASEASSIST2026</strong>, or use Google SSO if you invite their Google email.
+                The invited user will receive an email with a unique single-use invite code. They can sign up at caseassist.ca/login using their email and the code. The code expires in 30 days. Google SSO users with a matching email are admitted automatically.
               </div>
             </div>
           )}
@@ -244,10 +248,11 @@ export default function AdminPanel({ currentUser, onClose }) {
                 </div>
                 <div style={{ marginTop: 16, fontSize: 13, color: "#6E6F76", lineHeight: 1.7 }}>
                   <div><strong>Seats:</strong> {seatsUsed} of {seatsMax} used</div>
-                  <div><strong>Cases:</strong> {org?.plan === "starter" ? "Up to 3 active" : "Unlimited"}</div>
-                  <div><strong>AI analysis:</strong> {org?.plan === "starter" ? "5/month" : "Unlimited"}</div>
-                  <div><strong>Document storage:</strong> {org?.plan === "firm" ? "Unlimited" : org?.plan === "pro" ? "10 GB" : "1 GB"}</div>
-                  <div><strong>API access:</strong> {org?.plan === "firm" ? "Yes" : "No"}</div>
+                  <div><strong>Cases:</strong> {org?.plan === "free" ? "Up to 3 active" : org?.plan === "starter" ? "Up to 25 active" : "Unlimited"}</div>
+                  <div><strong>AI analysis:</strong> {org?.plan === "free" ? "5/month" : org?.plan === "starter" ? "50/month" : "Unlimited"}</div>
+                  <div><strong>Document storage:</strong> {org?.plan === "enterprise" ? "Unlimited" : org?.plan === "pro" ? "10 GB" : org?.plan === "starter" ? "2 GB" : "500 MB"}</div>
+                  <div><strong>API access:</strong> {org?.plan === "enterprise" ? "Yes" : "No"}</div>
+                  <div><strong>Priority support:</strong> {org?.plan === "pro" || org?.plan === "enterprise" ? "Yes" : "No"}</div>
                 </div>
                 {/* Seat usage bar */}
                 <div style={{ marginTop: 16 }}>
@@ -269,7 +274,7 @@ export default function AdminPanel({ currentUser, onClose }) {
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#1D1D1F" }}>{p.label}</div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: p.color, marginTop: 2 }}>{p.price}</div>
                     <div style={{ fontSize: 11, color: "#86868B", marginTop: 4 }}>{p.seats} seat{p.seats !== 1 ? "s" : ""}</div>
-                    {(()=>{const tiers=["starter","pro","firm"];const current=tiers.indexOf(org?.plan||"starter");const target=tiers.indexOf(key);return target>current})() && (
+                    {(()=>{const tiers=["free","starter","pro","enterprise"];const current=tiers.indexOf(org?.plan||"free");const target=tiers.indexOf(key);return target>current})() && (
                       <button onClick={() => window.open("/pricing", "_blank")} style={{ marginTop: 8, padding: "6px 12px", borderRadius: 8, border: "1px solid " + p.color + "40", background: "transparent", color: p.color, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Upgrade</button>
                     )}
                   </div>

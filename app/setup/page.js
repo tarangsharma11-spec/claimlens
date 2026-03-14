@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 export default function OrgSetup({ user }) {
   const router = useRouter();
   const [orgName, setOrgName] = useState("");
-  const [plan, setPlan] = useState("starter");
+  const [plan, setPlan] = useState("free");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [checking, setChecking] = useState(true);
@@ -96,9 +96,10 @@ export default function OrgSetup({ user }) {
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#6E6F76", marginBottom: 8 }}>Select a plan</label>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
             {[
-              { id: "starter", name: "Starter", price: "Free", desc: "3 cases, 1 user", seats: 1 },
-              { id: "pro", name: "Pro", price: "$79/mo", desc: "Unlimited cases, 5 users", seats: 5 },
-              { id: "firm", name: "Firm", price: "$299/mo", desc: "Unlimited cases, 25 users", seats: 25 },
+              { id: "free", name: "Free", price: "Free", desc: "3 cases, 1 user, 5 AI/mo", seats: 1 },
+              { id: "starter", name: "Starter", price: "$49/mo", desc: "25 cases, 3 users, 50 AI/mo", seats: 3 },
+              { id: "pro", name: "Pro", price: "$149/mo", desc: "Unlimited cases, 10 users", seats: 10 },
+              { id: "enterprise", name: "Enterprise", price: "$499/mo", desc: "Unlimited everything, 50 users, API", seats: 50 },
             ].map((p) => (
               <button
                 key={p.id}

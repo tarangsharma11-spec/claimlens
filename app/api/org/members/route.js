@@ -60,13 +60,27 @@ export async function POST(request) {
       invitedBy: session.user.email,
     });
 
+    // Generate single-use invite code
+    let inviteCode = null;
+    try {
+      const { createInviteCode } = await import("@/lib/db");
+      const code = await createInviteCode(membership.org_id, {
+        email,
+        role: role || "lawyer",
+        invitedBy: session.user.email,
+      });
+      inviteCode = code.code;
+    } catch (err) {
+      console.log("Invite code generation failed:", err.message);
+    }
+
     await logActivity(membership.org_id, {
       email: session.user.email,
       action: "member_invited",
-      detail: `Invited ${email} as ${role || "lawyer"}`,
+      detail: `Invited ${email} as ${role || "lawyer"}` + (inviteCode ? ` (code: ${inviteCode})` : ""),
     });
 
-    return NextResponse.json({ member });
+    return NextResponse.json({ member, inviteCode });
   } catch (err) {
     console.error("Invite member error:", err);
     return NextResponse.json({ error: "Failed to invite member." }, { status: 500 });
