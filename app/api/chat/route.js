@@ -1,4 +1,18 @@
 import { NextResponse } from "next/server";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Load OPM policies from JSON
+let OPM_TEXT = "";
+try {
+  const opmPath = join(process.cwd(), "app/data/opm-policies.json");
+  const opmData = JSON.parse(readFileSync(opmPath, "utf-8"));
+  OPM_TEXT = Object.values(opmData.policies).map(p =>
+    `\n--- OPM ${p.code}: ${p.title} ---\nChapter: ${p.chapter}\nEffective: ${p.effectiveDate || "N/A"}\nLegislation: ${p.legislation || "N/A"}\nURL: ${p.url}\n\n${p.text}\n\nKey Points: ${(p.keyPoints || []).join("; ")}`
+  ).join("\n");
+} catch (e) {
+  console.warn("OPM JSON not loaded:", e.message);
+}
 import { getServerSession } from "next-auth";
 
 const SYS = `You are CaseAssist — a specialized AI advisor for workers' compensation claims analysis. You help injury lawyers, WSIB employees, employers, and health care providers analyze workers' compensation claims against the WSIB Operational Policy Manual (OPM) and medical evidence standards.
@@ -96,7 +110,11 @@ RESPONSE FORMAT for ruling guidance:
 ## Ruling Prediction (**RULING PREDICTION: Allow/Deny/Further Investigation Required** + confidence + reasoning)
 ## Recommendations
 
-Advisory only — final decisions by authorized WSIB decision-makers.`;
+Advisory only — final decisions by authorized WSIB decision-makers.
+
+--- FULL OPM POLICY REFERENCE ---
+The following are the actual WSIB Operational Policy Manual policy texts. Use these as authoritative references when analyzing claims. Always cite the specific OPM section number when referencing a policy.
+\${OPM_TEXT}`;
 
 export async function POST(request) {
   const session = await getServerSession();
