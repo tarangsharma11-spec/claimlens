@@ -20,8 +20,8 @@ export async function GET(request) {
     return NextResponse.json({ error: "Not a member of any organization." }, { status: 404 });
   }
 
-  const claims = await getOrgClaims(membership.org_id);
-  return NextResponse.json({ claims, orgId: membership.org_id });
+  const claims = await getOrgClaims(membership.org_id, { email: session.user.email, role: membership.role });
+  return NextResponse.json({ claims, orgId: membership.org_id, role: membership.role });
 }
 
 export async function POST(request) {
@@ -69,11 +69,37 @@ export async function PATCH(request) {
   }
 
   try {
-    const { id, ...updates } = await request.json();
+    const body = await request.json();
+    const { id, action, shareWith } = body;
     if (!id) {
       return NextResponse.json({ error: "Claim ID required." }, { status: 400 });
     }
 
+    // Handle share/unshare actions
+    if (action === "share" && shareWith) {
+      const { shareClaim } = await import("@/lib/db");
+      await shareClaim(membership.org_id, id, shareWith);
+      await logActivity(membership.org_id, {
+        claimId: id,
+        email: session.user.email,
+        action: "claim_shared",
+        detail: `Shared with ${shareWith}`,
+      });
+      return NextResponse.json({ success: true });
+    }
+    if (action === "unshare" && shareWith) {
+      const { unshareClaim } = await import("@/lib/db");
+      await unshareClaim(membership.org_id, id, shareWith);
+      await logActivity(membership.org_id, {
+        claimId: id,
+        email: session.user.email,
+        action: "claim_unshared",
+        detail: `Removed sharing with ${shareWith}`,
+      });
+      return NextResponse.json({ success: true });
+    }
+
+    const { id: _id, action: _a, shareWith: _sw, ...updates } = body;
     const claim = await updateClaim(membership.org_id, id, updates);
     if (!claim) {
       return NextResponse.json({ error: "Claim not found." }, { status: 404 });
