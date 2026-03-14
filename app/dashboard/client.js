@@ -2,69 +2,55 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { signOut } from "next-auth/react";
 
-/* ═══ Markdown renderer ═══ */
-const Msg = ({ text }) => { const lines = (text || "").split("\n"); return (<div className="ai-text">{lines.map((raw, i) => { const t = raw.trim(); if (!t) return <div key={i} style={{ height: 10 }} />; if (/^#{1,3}\s/.test(t)) { const l = t.match(/^(#+)/)[1].length; return <div key={i} className={`ai-h ai-h${l}`}>{t.replace(/^#+\s*/, "")}</div>; } if (/\*\*RULING PREDICTION/i.test(t) || /^RULING PREDICTION/i.test(t)) { const a = /allow/i.test(t), d = /deny/i.test(t); return <div key={i} className={`ai-ruling ${a ? "allow" : d ? "deny" : "inv"}`}><span className="ai-rdot" />{t.replace(/\*\*/g, "")}</div>; } if (/^⚠/.test(t)) return <div key={i} className="ai-flag">{t}</div>; if (/^(OPM\s+)?\d{2}-\d{2}-\d{2}/i.test(t)) return <div key={i} className="ai-opm">{t}</div>; if (/^[✓✔]\s/.test(t)) return <div key={i} className="ai-chk pass"><span className="ai-ci">✓</span><span>{t.replace(/^[✓✔]\s*/, "")}</span></div>; if (/^[✗✘]\s/.test(t)) return <div key={i} className="ai-chk fail"><span className="ai-ci">✗</span><span>{t.replace(/^[✗✘]\s*/, "")}</span></div>; if (/^[-•]\s/.test(t)) return <div key={i} className="ai-li">{t.replace(/^[-•]\s*/, "")}</div>; if (/^\d+[.)]\s/.test(t)) { const n = t.match(/^(\d+)/)[1]; return <div key={i} className="ai-ol"><span className="ai-oln">{n}</span>{t.replace(/^\d+[.)]\s*/, "")}</div>; } const p = t.split(/(\*\*[^*]+\*\*)/g); if (p.length > 1) return <div key={i} className="ai-p">{p.map((s, j) => /^\*\*/.test(s) ? <strong key={j}>{s.replace(/\*\*/g, "")}</strong> : <span key={j}>{s}</span>)}</div>; return <div key={i} className="ai-p">{t}</div>; })}</div>); };
+/* ═══ Imports from extracted modules ═══ */
+import { AiMessage as Msg } from "@/app/components/AiMessage";
+import { useStreamingChat } from "@/app/lib/use-streaming-chat";
+import { exportCasePdf } from "@/app/lib/export-pdf";
+import {
+  STAGES, stageOf, DOC_TYPES, docTypeOf, guessDocType,
+  fmt, fmtTime, daysBetween, daysAgo,
+  storageKey, loadClaims, persistClaims, searchClaims,
+  redactPII, CASE_TEMPLATES, GLOSSARY, PROVIDER_TYPES,
+  LETTER_TEMPLATES, VALUATION_FIELDS, SCENARIOS,
+} from "@/app/lib/constants";
+import {
+  getDeadlines, getRTWProgress, getRedFlags, getRiskScore,
+  getClaimStrength, getWhatsNeeded, getClaimCostForecast,
+  getNotifications, getSmartWarnings, getWorkflowStatus,
+  getAIBrief, getThreePointContact, calcAWW,
+} from "@/app/lib/claim-engine";
 
-/* ═══ Stages ═══ */
-const STAGES=[{id:"new",label:"New",color:"#86868B",icon:"○",guidance:"Upload documents and run your first AI analysis to get a ruling prediction."},{id:"review",label:"Under Review",color:"#0071E3",icon:"◎",guidance:"Review the AI analysis. Check compliance, assess RTW plan, and identify missing evidence."},{id:"investigating",label:"Investigating",color:"#FF9500",icon:"◉",guidance:"Gather additional evidence. Upload new documents as they come in."},{id:"approved",label:"Approved",color:"#34C759",icon:"●",guidance:"Claim approved. Monitor return-to-work progress and benefit payments."},{id:"denied",label:"Denied",color:"#FF3B30",icon:"●",guidance:"Claim denied. Review the ruling rationale and consider appeal options."},{id:"appeal",label:"Appeal",color:"#AF52DE",icon:"◈",guidance:"Prepare appeal submission. Gather additional evidence and policy arguments."},{id:"closed",label:"Closed",color:"#48484A",icon:"■",guidance:"This case is closed."}];
-const stageOf=id=>STAGES.find(s=>s.id===id)||STAGES[0];
-const fmt=iso=>{if(!iso||iso==="—")return"—";try{return new Date(iso).toLocaleDateString("en-CA",{month:"short",day:"numeric",year:"numeric"})}catch{return iso}};
-const fmtTime=iso=>{try{return new Date(iso).toLocaleString("en-CA",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}catch{return""}};
-const daysBetween=(a,b)=>{try{return Math.floor((new Date(b)-new Date(a))/(1000*60*60*24))}catch{return 0}};
-const daysAgo=(iso)=>{try{return Math.floor((Date.now()-new Date(iso))/(1000*60*60*24))}catch{return 0}};
-
-/* ═══ Document type tags ═══ */
-const DOC_TYPES=[{id:"form6",label:"Form 6",color:"#0071E3"},{id:"form7",label:"Form 7",color:"#34C759"},{id:"form8",label:"Form 8",color:"#FF9500"},{id:"medical",label:"Medical Report",color:"#AF52DE"},{id:"imaging",label:"Imaging",color:"#FF2D55"},{id:"specialist",label:"Specialist",color:"#5856D6"},{id:"witness",label:"Witness Statement",color:"#00C7BE"},{id:"employer",label:"Employer Statement",color:"#FF9500"},{id:"physio",label:"Physio/Rehab",color:"#30B0C7"},{id:"fce",label:"FCE",color:"#AC8E68"},{id:"other",label:"Other",color:"#86868B"}];
-function guessDocType(name){const n=name.toLowerCase();if(/form.?6|worker.?report/i.test(n))return"form6";if(/form.?7|employer.?report/i.test(n))return"form7";if(/form.?8|health|practitioner/i.test(n))return"form8";if(/mri|xray|x-ray|ct.?scan|imaging|radiology/i.test(n))return"imaging";if(/physio|rehab|therapy/i.test(n))return"physio";if(/witness/i.test(n))return"witness";if(/specialist|referral|consult/i.test(n))return"specialist";if(/fce|capacity|functional/i.test(n))return"fce";if(/medical|doctor|physician|clinical/i.test(n))return"medical";if(/employer|company/i.test(n))return"employer";return"other"}
-const docTypeOf=id=>DOC_TYPES.find(d=>d.id===id)||DOC_TYPES[DOC_TYPES.length-1];
-
-/* ═══ Deadline calculator ═══ */
-function getDeadlines(claim){if(!claim||!claim.injuryDate||claim.injuryDate==="—")return[];const inj=new Date(claim.injuryDate);const now=new Date();const dl=[];
-const form7Due=new Date(inj);form7Due.setDate(form7Due.getDate()+3);
-const hasForm7=claim.documents?.some(d=>d.tag==="form7");
-if(!hasForm7){const overdue=now>form7Due;dl.push({label:"Form 7 filing deadline",date:form7Due.toISOString(),daysLeft:daysBetween(now,form7Due),status:overdue?"overdue":"upcoming",priority:"high"})}
-
-const rtwBenchmarks={"Acute Injury":{modified:21,full:42},"Occupational Disease":{modified:42,full:112},"Traumatic Mental Stress":{modified:28,full:84},"Chronic Mental Stress":{modified:42,full:112},"PTSD (First Responder)":{modified:28,full:84},"Recurrence":{modified:14,full:42},"Aggravation of Pre-existing":{modified:21,full:56}};
-const bench=rtwBenchmarks[claim.injuryType]||{modified:21,full:56};
-const modDate=new Date(inj);modDate.setDate(modDate.getDate()+bench.modified);
-const fullDate=new Date(inj);fullDate.setDate(fullDate.getDate()+bench.full);
-if(claim.stage!=="closed"&&claim.stage!=="denied"){dl.push({label:"Expected modified duties",date:modDate.toISOString(),daysLeft:daysBetween(now,modDate),status:now>modDate?"overdue":"upcoming",priority:"medium"});dl.push({label:"Expected full duties",date:fullDate.toISOString(),daysLeft:daysBetween(now,fullDate),status:now>fullDate?"overdue":"upcoming",priority:"medium"})}
-
-if(claim.stage==="denied"){const appealDate=new Date(claim.updatedAt||now);appealDate.setDate(appealDate.getDate()+30);dl.push({label:"Appeal window closes",date:appealDate.toISOString(),daysLeft:daysBetween(now,appealDate),status:now>appealDate?"overdue":"upcoming",priority:"high"})}
-
-const loeReview=new Date(inj);loeReview.setMonth(loeReview.getMonth()+72);
-if(claim.stage==="approved"){dl.push({label:"72-month LOE review",date:loeReview.toISOString(),daysLeft:daysBetween(now,loeReview),status:"upcoming",priority:"low"})}
-return dl.sort((a,b)=>a.daysLeft-b.daysLeft)}
-
-/* ═══ RTW Progress ═══ */
-function getRTWProgress(claim){if(!claim||!claim.injuryDate||claim.injuryDate==="—")return null;
-const bench={"Acute Injury":42,"Occupational Disease":112,"Traumatic Mental Stress":84,"Chronic Mental Stress":112,"PTSD (First Responder)":84,"Recurrence":42,"Aggravation of Pre-existing":56};
-const totalDays=bench[claim.injuryType]||56;const elapsed=daysAgo(claim.injuryDate);const pct=Math.min(100,Math.round((elapsed/totalDays)*100));
-const status=pct>=100?(claim.stage==="approved"||claim.stage==="closed"?"recovered":"delayed"):pct>=75?"late":"on-track";
-return{elapsed,totalDays,pct,status,label:`Day ${elapsed} of ~${totalDays}`}}
-
-/* ═══ Case summary generator ═══ */
+/* ═══ Functions kept inline (UI-specific, reference data small enough) ═══ */
 function getCaseSummary(c){if(!c)return"";const parts=[];parts.push(`${c.injuryType} claim`);if(c.worker&&c.worker!=="—")parts.push(`for ${c.worker}`);if(c.employer&&c.employer!=="—")parts.push(`at ${c.employer}`);if(c.injuryDate&&c.injuryDate!=="—")parts.push(`(${fmt(c.injuryDate)})`);const lastRuling=c.analyses?.[c.analyses.length-1]?.ruling;if(lastRuling)parts.push(`· AI: ${lastRuling}`);return parts.join(" ")}
 
-/* ═══ Smart next actions ═══ */
 function getNextActions(c){if(!c)return[];const s=c.stage,ha=(c.analyses?.length||0)>0,hd=(c.documents?.length||0)>0,lr=c.analyses?.[c.analyses.length-1]?.ruling,a=[];
 if(s==="new"){if(!hd&&!ha)a.push({label:"Upload claim documents",desc:"Add Form 6, Form 7, medical reports, or other evidence",action:"upload",priority:"high"});if(!ha)a.push({label:"Run AI adjudication analysis",desc:"Get a ruling prediction based on the WSIB Operational Policy Manual",action:"analyze",priority:"high"});if(ha)a.push({label:"Move to Under Review",desc:"Analysis complete — advance this case",action:"stage:review",priority:"medium"})}
-if(s==="review"){a.push({label:"Check reporting compliance",desc:"Verify Form 7 was filed within 3 business days",action:"prompt:Check if this claim was reported within WSIB filing deadlines. Was the Form 7 filed on time?",priority:"medium"});a.push({label:"Assess return-to-work plan",desc:"Evaluate RTW readiness against clinical guidelines",action:"prompt:Assess the return-to-work plan for this claim. Are the timelines consistent with clinical guidelines?",priority:"medium"});a.push({label:"Estimate benefit entitlements",desc:"Calculate LOE, NEL, and health care benefits",action:"prompt:What benefits would this worker be entitled to? Walk me through the LOE calculation.",priority:"low"});if(lr==="Further Investigation")a.push({label:"Move to Investigating",desc:"Additional evidence needed",action:"stage:investigating",priority:"high"});if(lr==="Allow")a.push({label:"Approve this claim",desc:"AI recommends approval",action:"stage:approved",priority:"high"});if(lr==="Deny")a.push({label:"Deny this claim",desc:"AI recommends denial",action:"stage:denied",priority:"high"})}
-if(s==="investigating"){a.push({label:"Upload additional evidence",desc:"Add new medical reports, specialist referrals, or witness statements",action:"upload",priority:"high"});a.push({label:"Re-run analysis with new evidence",desc:"Get an updated ruling prediction",action:"analyze",priority:"high"});a.push({label:"Check for red flags",desc:"Review the claim for concerning patterns",action:"prompt:Are there any red flags in this claim?",priority:"medium"})}
-if(s==="denied"){a.push({label:"Review denial rationale",desc:"Understand why the claim was denied",action:"prompt:Explain the detailed rationale for denying this claim. Which OPM sections apply and what evidence would overturn this?",priority:"high"});a.push({label:"Begin appeal process",desc:"Move to Appeal stage",action:"stage:appeal",priority:"medium"})}
-if(s==="approved"){a.push({label:"Generate medical chronology",desc:"AI-generated timeline of all medical events and treatments",action:"prompt:Generate a detailed medical chronology for this claim. List every medical event in chronological order: date of injury, ER visits, physician appointments, imaging, diagnoses, treatments, medications, physiotherapy sessions, specialist referrals, and functional assessments. Format as a timeline.",priority:"medium"});a.push({label:"Create RTW monitoring plan",desc:"Set up milestones and check-in schedule",action:"prompt:Create a detailed return-to-work monitoring plan for this claim with milestones and timelines.",priority:"medium"});a.push({label:"Calculate benefit amounts",desc:"Get detailed LOE and NEL calculations",action:"prompt:Calculate detailed benefit amounts for this approved claim including LOE, NEL, and the 72-month review timeline.",priority:"medium"});a.push({label:"Generate case memo",desc:"Create a downloadable summary of this case",action:"prompt:Generate a comprehensive case memo for this claim. Include: claim facts, Five Point Check results, medical evidence summary, applicable OPM policy sections, ruling prediction, benefit entitlements, and recommendations. Format it as a professional legal memo.",priority:"low"});a.push({label:"Close case",desc:"Worker returned to full duties",action:"stage:closed",priority:"low"})}
-if(s==="appeal"){a.push({label:"Build appeal arguments",desc:"Get AI-assisted policy arguments",action:"prompt:Help me build the strongest appeal arguments for this claim. Reference specific OPM sections and benefit of doubt (11-01-13).",priority:"high"});a.push({label:"Identify evidence gaps",desc:"Find what could strengthen the appeal",action:"prompt:What additional evidence would strengthen this appeal?",priority:"high"});a.push({label:"Upload appeal documents",desc:"Add new evidence",action:"upload",priority:"medium"})}
+if(s==="review"){a.push({label:"Check reporting compliance",desc:"Verify Form 7 was filed within 3 business days",action:"prompt:Check if this claim was reported within WSIB filing deadlines. Was the Form 7 filed on time?",priority:"medium"});a.push({label:"Assess return-to-work plan",desc:"Evaluate RTW readiness against clinical guidelines",action:"prompt:Assess the return-to-work plan for this claim. Are the timelines consistent with clinical guidelines?",priority:"medium"});if(lr==="Further Investigation")a.push({label:"Move to Investigating",desc:"Additional evidence needed",action:"stage:investigating",priority:"high"});if(lr==="Allow")a.push({label:"Approve this claim",desc:"AI recommends approval",action:"stage:approved",priority:"high"});if(lr==="Deny")a.push({label:"Deny this claim",desc:"AI recommends denial",action:"stage:denied",priority:"high"})}
+if(s==="investigating"){a.push({label:"Upload additional evidence",desc:"Add new medical reports, specialist referrals, or witness statements",action:"upload",priority:"high"});a.push({label:"Re-run analysis with new evidence",desc:"Get an updated ruling prediction",action:"analyze",priority:"high"})}
+if(s==="denied"){a.push({label:"Review denial rationale",desc:"Understand why the claim was denied",action:"prompt:Explain the detailed rationale for denying this claim.",priority:"high"});a.push({label:"Begin appeal process",desc:"Move to Appeal stage",action:"stage:appeal",priority:"medium"})}
+if(s==="approved"){a.push({label:"Generate medical chronology",desc:"AI-generated timeline of all medical events",action:"prompt:Generate a detailed medical chronology for this claim.",priority:"medium"});a.push({label:"Export case report",desc:"Download a professional PDF report",action:"export",priority:"medium"});a.push({label:"Close case",desc:"Worker returned to full duties",action:"stage:closed",priority:"low"})}
+if(s==="appeal"){a.push({label:"Build appeal arguments",desc:"Get AI-assisted policy arguments",action:"prompt:Help me build the strongest appeal arguments for this claim.",priority:"high"});a.push({label:"Upload appeal documents",desc:"Add new evidence",action:"upload",priority:"medium"})}
 return a}
 
-/* ═══ Storage ═══ */
-function storageKey(e){return`caseassist_claims_${e?.toLowerCase()}`}
-function loadClaims(e){if(!e)return[];try{return JSON.parse(window.localStorage.getItem(storageKey(e))||"[]")}catch{return[]}}
-function persistClaims(e,c){if(!e)return;try{window.localStorage.setItem(storageKey(e),JSON.stringify(c))}catch{}}
+const scenarios=SCENARIOS;
 
-/* ═══ Search helper ═══ */
-function searchClaims(claims,query){if(!query.trim())return claims;const q=query.toLowerCase();return claims.filter(c=>{const haystack=[c.claimNumber,c.worker,c.employer,c.injuryType,c.description,stageOf(c.stage).label,...(c.notes||[]).map(n=>n.text),...(c.analyses||[]).map(a=>a.ruling)].join(" ").toLowerCase();return haystack.includes(q)})}
+/* ═══ OPM Policy Reference (inline — small dataset for UI panel) ═══ */
+const OPM_POLICIES={"11-01-01":{url:"https://www.wsib.ca/en/operational-policy-manual/adjudicative-process",title:"Five Point Check",chapter:"Decision-Making",text:"ALL five points required for entitlement.",applies:["all"]},"11-01-02":{title:"Decision-Making Process",chapter:"Decision-Making",text:"WSIB uses an inquiry system, not adversarial.",applies:["all"]},"11-01-03":{url:"https://www.wsib.ca/en/operational-policy-manual/merits-and-justice",title:"Merits and Justice",chapter:"Decision-Making",text:"Must consider all provisions of WSIA/WCA.",applies:["all"]},"11-01-13":{url:"https://www.wsib.ca/en/operational-policy-manual/benefit-doubt",title:"Benefit of Doubt",chapter:"Decision-Making",text:"When evidence is equally balanced, favour the claimant.",applies:["all"]},"15-01-01":{url:"https://www.wsib.ca/en/operational-policy-manual/reporting-obligations",title:"Reporting Requirements",chapter:"Claims",text:"Employers: Form 7 within 3 business days.",applies:["all"]},"15-02-01":{url:"https://www.wsib.ca/en/operational-policy-manual/arising-out-and-course-employment",title:"Work Relatedness",chapter:"Claims",text:"Two-part test: arising out of + in the course of.",applies:["all"]},"15-03-13":{url:"https://www.wsib.ca/en/operational-policy-manual/post-traumatic-stress-disorder",title:"PTSD First Responders",chapter:"Claims",text:"Presumptive coverage for first responders with PTSD.",applies:["PTSD (First Responder)"]},"15-04-01":{url:"https://www.wsib.ca/en/operational-policy-manual/pre-existing-conditions",title:"Pre-existing Conditions",chapter:"Claims",text:"Thin skull principle applies.",applies:["all"]},"18-01-01":{url:"https://www.wsib.ca/en/operational-policy-manual/determining-average-earnings",title:"Loss of Earnings",chapter:"Benefits",text:"85% of net average earnings.",applies:["all"]},"19-01-01":{url:"https://www.wsib.ca/en/operational-policy-manual/return-work",title:"RTW Obligations",chapter:"Return to Work",text:"Workers and employers have RTW obligations.",applies:["all"]}};
+function getRelevantPolicies(claim){const type=claim?.injuryType||"";return Object.entries(OPM_POLICIES).filter(([k,v])=>v.applies.includes("all")||v.applies.includes(type)).map(([k,v])=>({code:k,...v}))}
 
-/* ═══ Components ═══ */
+/* ═══ AI Tools Config ═══ */
+const AI_TOOLS=[
+{id:"evidence_check",category:"Assessment",title:"Evidence Sufficiency Check",desc:"Review all evidence and flag gaps.",icon:"EC",color:"#E53935",prompt:c=>"Perform a comprehensive evidence sufficiency check for claim "+c.claimNumber+". Worker: "+c.worker+", Employer: "+c.employer+", Type: "+c.injuryType+". Documents: "+((c.documents||[]).map(d=>d.tag).join(", ")||"none")},
+{id:"case_narrative",category:"Assessment",title:"Case Narrative",desc:"Generate a plain-English narrative.",icon:"CN",color:"#3B5EC0",prompt:c=>"Generate a comprehensive case narrative for claim "+c.claimNumber+". "+c.injuryType+", "+c.worker+" vs "+c.employer+". Description: "+(c.description||"N/A")},
+{id:"decision_template",category:"Adjudication",title:"Five-Point Decision Template",desc:"Structured walkthrough for adjudicators.",icon:"DT",color:"#6C5CE7",prompt:c=>"Generate a formal Five-Point Check decision template for claim "+c.claimNumber+". "+c.injuryType+", documents: "+((c.documents||[]).map(d=>d.tag).join(", ")||"none")},
+{id:"appeal_brief",category:"Legal",title:"Appeal Brief Builder",desc:"Generate a structured appeal brief.",icon:"AB",color:"#0071E3",prompt:c=>"Generate an appeal brief for WSIAT for claim "+c.claimNumber+". "+c.worker+" v. WSIB. "+c.injuryType+", DOI: "+c.injuryDate},
+{id:"opposing_args",category:"Legal",title:"Opposing Arguments",desc:"Anticipate and prepare rebuttals.",icon:"OA",color:"#F57C00",prompt:c=>"For claim "+c.claimNumber+" ("+c.injuryType+"), anticipate opposing arguments and prepare rebuttals."},
+{id:"medical_chrono",category:"Medical",title:"Medical Chronology",desc:"Build a chronological timeline.",icon:"MC",color:"#28A745",prompt:c=>"Generate a detailed medical chronology for claim "+c.claimNumber+". DOI: "+c.injuryDate+". Documents: "+((c.documents||[]).map(d=>d.name+" ["+d.tag+"]").join("; ")||"none")},
+{id:"wsiat_search",category:"Legal",title:"WSIAT Precedent Search",desc:"Search for relevant precedents.",icon:"WS",color:"#251A5E",prompt:c=>"Search for relevant WSIAT decisions for claim "+c.claimNumber+". Injury Type: "+c.injuryType+". Description: "+(c.description||"N/A")},
+{id:"opm_reference",category:"Reference",title:"OPM Policy Lookup",desc:"Get relevant OPM sections explained.",icon:"OP",color:"#5856D6",prompt:c=>"Provide a comprehensive OPM policy reference for "+c.injuryType+" claims."},
+];
+
+/* ═══ Sub-components (kept inline — tightly coupled to main state) ═══ */
 function StageProgress({stage}){const steps=[{id:"new",label:"New"},{id:"review",label:"Review"},{id:"investigate",label:"Investigate"},{id:"decision",label:"Decision"},{id:"closed",label:"Closed"}];const map={new:0,review:1,investigating:2,approved:3,denied:3,appeal:2,closed:4};const cur=map[stage]??0;
 return(<div style={{display:"flex",alignItems:"center",gap:0,margin:"16px 0 20px",overflowX:"auto"}}>{steps.map((s,i)=>(<div key={s.id} style={{display:"flex",alignItems:"center",flex:i<steps.length-1?1:"none",minWidth:0}}><div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><div style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,background:i<=cur?"var(--blue)":"var(--g200)",color:i<=cur?"#fff":"var(--g400)",transition:"all .3s",flexShrink:0}}>{i<cur?"✓":i+1}</div><span style={{fontSize:10,fontWeight:600,color:i<=cur?"var(--g900)":"var(--g400)",whiteSpace:"nowrap"}}>{s.label}</span></div>{i<steps.length-1&&(<div style={{flex:1,height:2,margin:"0 6px",marginBottom:18,background:i<cur?"var(--blue)":"var(--g200)",borderRadius:1,transition:"all .3s",minWidth:12}}/>)}</div>))}</div>)}
 
@@ -72,395 +58,85 @@ function DeadlineBar({deadlines}){if(!deadlines||deadlines.length===0)return nul
 return(<div style={{marginBottom:16}}><div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Deadlines & Milestones</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deadlines.map((d,i)=>{const overdue=d.status==="overdue";return(<div key={i} style={{padding:"8px 12px",borderRadius:12,background:overdue?"var(--red-light)":"var(--g50)",border:`.5px solid ${overdue?"var(--red-border)":"var(--g200)"}`,flex:"1 1 200px",minWidth:180}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}><span style={{fontSize:12,fontWeight:600,color:overdue?"var(--red)":"var(--g700)"}}>{d.label}</span><span style={{fontSize:10,fontWeight:600,color:overdue?"var(--red)":"var(--blue)",background:overdue?"rgba(255,59,48,.1)":"var(--blue-light)",padding:"2px 8px",borderRadius:100}}>{overdue?`${Math.abs(d.daysLeft)}d overdue`:`${d.daysLeft}d`}</span></div><div style={{fontSize:11,color:"var(--g500)"}}>{fmt(d.date)}</div></div>)})}</div></div>)}
 
 function RTWBar({progress}){if(!progress)return null;const colors={recovered:"var(--green)",delayed:"var(--red)","on-track":"var(--blue)",late:"var(--orange)"};const c=colors[progress.status]||"var(--blue)";
-return(<div style={{marginBottom:16,padding:"12px 16px",background:"var(--g50)",borderRadius:12,border:`.5px solid var(--g200)`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span style={{fontSize:12,fontWeight:700,color:"var(--g700)"}}>Return-to-Work Progress</span><span style={{fontSize:12,fontWeight:600,color:c}}>{progress.label}</span></div><div style={{height:6,background:"var(--g200)",borderRadius:3,overflow:"hidden"}}><div style={{width:`${progress.pct}%`,height:"100%",background:c,borderRadius:3,transition:"width .5s ease"}}/></div><div style={{display:"flex",justifyContent:"space-between",marginTop:4}}><span style={{fontSize:10,color:"var(--g400)"}}>Injury date</span><span style={{fontSize:10,color:"var(--g400)",textTransform:"capitalize"}}>{progress.status}</span><span style={{fontSize:10,color:"var(--g400)"}}>Expected full RTW</span></div></div>)}
-
-function DocList({documents}){if(!documents||documents.length===0)return null;const byType={};documents.forEach(d=>{const tag=d.tag||"other";if(!byType[tag])byType[tag]=[];byType[tag].push(d)});
-return(<div style={{marginBottom:16}}><div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Documents ({documents.length})</div><div style={{display:"flex",flexDirection:"column",gap:4}}>{Object.entries(byType).map(([tag,docs])=>{const dt=docTypeOf(tag);return docs.map((d,i)=>(<div key={`${tag}-${i}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid var(--card-border)"}}><span style={{fontSize:11,fontWeight:600,color:dt.color,background:`${dt.color}12`,padding:"2px 8px",borderRadius:6,whiteSpace:"nowrap"}}>{dt.label}</span><span style={{fontSize:13,color:"var(--g700)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontSize:10,color:"var(--g400)",whiteSpace:"nowrap"}}>{fmtTime(d.addedAt)}</span></div>))})}</div></div>)}
+return(<div style={{marginBottom:16,padding:"12px 16px",background:"var(--g50)",borderRadius:12,border:`.5px solid var(--g200)`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span style={{fontSize:12,fontWeight:700,color:"var(--g700)"}}>Return-to-Work Progress</span><span style={{fontSize:12,fontWeight:600,color:c}}>{progress.label}</span></div><div style={{height:6,background:"var(--g200)",borderRadius:3,overflow:"hidden"}}><div style={{width:`${progress.pct}%`,height:"100%",background:c,borderRadius:3,transition:"width .5s ease"}}/></div></div>)}
 
 function ActionCard({action,onAction}){const c=action.priority==="high"?{bg:"rgba(0,113,227,.05)",border:"rgba(0,113,227,.15)",accent:"var(--blue)"}:{bg:"var(--g50)",border:"var(--g200)",accent:"var(--g700)"};
-return(<button onClick={()=>onAction(action)} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",width:"100%",background:c.bg,border:`.5px solid ${c.border}`,borderRadius:12,cursor:"pointer",textAlign:"left",transition:"all .2s"}}><div style={{width:32,height:32,borderRadius:8,background:action.priority==="high"?"var(--blue)":"var(--g200)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:14,color:action.priority==="high"?"#fff":"var(--g600)"}}>{action.action==="upload"?<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>:action.action==="analyze"?<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>:action.action.startsWith("stage:")?<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>:<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></svg>}</span></div><div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:600,color:c.accent}}>{action.label}</div><div style={{fontSize:12,color:"var(--g500)",marginTop:1,lineHeight:1.4}}>{action.desc}</div></div><span style={{color:"var(--g300)",fontSize:18,flexShrink:0}}>›</span></button>)}
+return(<button onClick={()=>onAction(action)} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",width:"100%",background:c.bg,border:`.5px solid ${c.border}`,borderRadius:12,cursor:"pointer",textAlign:"left",transition:"all .2s"}}><div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:600,color:c.accent}}>{action.label}</div><div style={{fontSize:12,color:"var(--g500)",marginTop:1,lineHeight:1.4}}>{action.desc}</div></div><span style={{color:"var(--g300)",fontSize:18,flexShrink:0}}>›</span></button>)}
 
-function CaseSummaryCard({claim,onClick,onCompare,comparing}){const s=stageOf(claim.stage);const _hasMed=claim.documents?.some(d=>["medical","form8","physio","specialist","imaging"].includes(d.tag));const rtw=(_hasMed||claim.analyses?.length>0)?getRTWProgress(claim):null;const lastRuling=claim.analyses?.[claim.analyses.length-1]?.ruling;const deadlines=getDeadlines(claim);const urgentDl=deadlines.find(d=>d.status==="overdue"||d.daysLeft<=3);
+function CaseSummaryCard({claim,onClick}){const s=stageOf(claim.stage);const rtw=(claim.documents?.some(d=>["medical","form8","physio","specialist","imaging"].includes(d.tag))||claim.analyses?.length>0)?getRTWProgress(claim):null;const lastRuling=claim.analyses?.[claim.analyses.length-1]?.ruling;const deadlines=getDeadlines(claim);const urgentDl=deadlines.find(d=>d.status==="overdue"||d.daysLeft<=3);
 const pill=(color)=>({padding:"2px 10px",borderRadius:100,fontSize:11,fontWeight:600,color,background:`${color}10`,border:`.5px solid ${color}30`,whiteSpace:"nowrap"});
-return(<div onClick={onCompare?()=>onCompare(claim):onClick} style={{padding:"14px",outline:comparing?"2px solid var(--blue)":"none",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",cursor:"pointer",marginBottom:8,transition:"all .2s"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}><span style={{width:10,height:10,borderRadius:"50%",background:s.color,flexShrink:0}}/><span style={{fontSize:15,fontWeight:700}}>{claim.claimNumber}</span><span style={pill(s.color)}>{s.label}</span>{lastRuling&&<span style={pill(lastRuling==="Allow"?"var(--green)":lastRuling==="Deny"?"var(--red)":"var(--orange)")}>AI: {lastRuling}</span>}</div><span style={{color:"var(--g300)",fontSize:18,flexShrink:0}}>›</span></div>
+return(<div onClick={onClick} style={{padding:"14px",background:"#fff",borderRadius:12,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)",cursor:"pointer",marginBottom:8,transition:"all .2s"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}><span style={{width:10,height:10,borderRadius:"50%",background:s.color,flexShrink:0}}/><span style={{fontSize:15,fontWeight:700}}>{claim.claimNumber}</span><span style={pill(s.color)}>{s.label}</span>{lastRuling&&<span style={pill(lastRuling==="Allow"?"var(--green)":lastRuling==="Deny"?"var(--red)":"var(--orange)")}>AI: {lastRuling}</span>}</div><span style={{color:"var(--g300)",fontSize:18,flexShrink:0}}>›</span></div>
 <div style={{fontSize:13,color:"var(--g500)",marginBottom:6}}>{claim.worker} · {claim.employer} · {fmt(claim.injuryDate)}</div>
 <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>{rtw&&<div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:40,height:4,background:"var(--g200)",borderRadius:2,overflow:"hidden"}}><div style={{width:`${rtw.pct}%`,height:"100%",background:rtw.status==="delayed"?"var(--red)":"var(--blue)",borderRadius:2}}/></div><span style={{fontSize:10,color:"var(--g500)"}}>{rtw.label}</span></div>}
 <span style={{fontSize:11,color:"var(--g400)"}}>{claim.documents?.length||0} docs · {claim.analyses?.length||0} analyses</span>
 {urgentDl&&<span style={{fontSize:11,fontWeight:600,color:urgentDl.status==="overdue"?"var(--red)":"var(--orange)"}}>⏰ {urgentDl.label}: {urgentDl.daysLeft<0?`${Math.abs(urgentDl.daysLeft)}d overdue`:`${urgentDl.daysLeft}d`}</span>}</div></div>)}
 
-
-/* ═══ Case Templates ═══ */
-const CASE_TEMPLATES=[
-{label:"Acute Back Injury",type:"Acute Injury",desc:"Worker sustained acute lumbar strain/sprain from lifting, bending, or twisting. Sudden onset of lower back pain.",icon:"BI"},
-{label:"Slip & Fall",type:"Acute Injury",desc:"Worker slipped/tripped and fell at the workplace. May involve multiple body parts.",icon:"SF"},
-{label:"Repetitive Strain",type:"Occupational Disease",desc:"Gradual onset of pain/dysfunction from repetitive workplace tasks. Common in upper extremity, shoulder, wrist.",icon:"RS"},
-{label:"Occupational Hearing Loss",type:"Occupational Disease",desc:"Progressive hearing loss from prolonged exposure to workplace noise. Audiometric evidence required.",icon:"HL"},
-{label:"First Responder PTSD",type:"PTSD (First Responder)",desc:"PTSD claim from first responder (police, fire, paramedic) with presumptive coverage under OPM 15-03-13.",icon:"PT"},
-{label:"Workplace Mental Stress",type:"Traumatic Mental Stress",desc:"Acute or chronic mental stress arising from workplace events or conditions.",icon:"MS"},
-{label:"Pre-existing Aggravation",type:"Aggravation of Pre-existing",desc:"Workplace incident aggravated a pre-existing condition. Thin skull principle may apply.",icon:"PA"},
-{label:"Recurrence",type:"Recurrence",desc:"Return of symptoms from a previously accepted WSIB claim. Must show causal connection to original injury.",icon:"RC"},
-];
-
-/* ═══ Benefit Calculator ═══ */
 function BenefitCalc({claim,onClose}){
 const[earnings,setEarnings]=useState({gross:"",net:"",postInjury:""});
 const[result,setResult]=useState(null);
 const calc=()=>{const g=parseFloat(earnings.gross)||0;const n=parseFloat(earnings.net)||0;const pi=parseFloat(earnings.postInjury)||0;
-const weeklyGross=g;const weeklyNet=n||g*0.72;const loe85=weeklyNet*0.85;const loeReduced=Math.max(0,loe85-pi);
-const annualGross=g*52;let nelRange="N/A";let nelAmount="Pending assessment";
-if(claim?.injuryType==="Acute Injury"){nelRange="0-10% (typical strain)";nelAmount="$0 - $10,515"}
+const weeklyNet=n||g*0.72;const loe85=weeklyNet*0.85;const loeReduced=Math.max(0,loe85-pi);
+let nelRange="N/A";let nelAmount="Pending assessment";
+if(claim?.injuryType==="Acute Injury"){nelRange="0-10%";nelAmount="$0 - $10,515"}
 if(claim?.injuryType==="Occupational Disease"){nelRange="5-30%";nelAmount="$5,258 - $31,545"}
 if(/PTSD|Mental/.test(claim?.injuryType||"")){nelRange="10-35%";nelAmount="$10,515 - $36,803"}
-setResult({weeklyGross,weeklyNet,loe85,loeReduced,annualGross,nelRange,nelAmount,
-monthlyLOE:(loeReduced*52/12).toFixed(2),reviewDate:claim?.injuryDate?(() => {const d=new Date(claim.injuryDate);d.setMonth(d.getMonth()+72);return d.toISOString()})():null})};
+setResult({weeklyNet,loe85,loeReduced,annualGross:(g*52),nelRange,nelAmount,monthlyLOE:(loeReduced*52/12).toFixed(2)})};
 return(<div onClick={e=>{if(e.target===e.currentTarget)onClose()}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(8px)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
 <div style={{background:"#fff",borderRadius:20,padding:"24px 20px",width:"100%",maxWidth:520,boxShadow:"0 20px 60px rgba(0,0,0,.15)",maxHeight:"90vh",overflowY:"auto"}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h3 style={{fontSize:20,fontWeight:700,letterSpacing:-.5}}>Benefit Calculator</h3><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"var(--g400)"}}>×</button></div>
-<p style={{fontSize:13,color:"var(--g500)",marginBottom:16}}>Estimate LOE and NEL based on pre-injury earnings. These are estimates only — actual amounts determined by WSIB.</p>
-<label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--g500)",marginBottom:4}}>Pre-injury gross weekly earnings ($)</label>
-<input type="number" value={earnings.gross} onChange={e=>setEarnings(p=>({...p,gross:e.target.value}))} placeholder="e.g. 980.00" style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1px solid var(--card-border)",fontSize:14,outline:"none",background:"var(--g50)",fontFamily:"inherit",marginBottom:12}}/>
-<label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--g500)",marginBottom:4}}>Pre-injury net weekly earnings ($) <span style={{fontWeight:400}}>(optional, defaults to 72% of gross)</span></label>
-<input type="number" value={earnings.net} onChange={e=>setEarnings(p=>({...p,net:e.target.value}))} placeholder="Auto-calculated if blank" style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1px solid var(--card-border)",fontSize:14,outline:"none",background:"var(--g50)",fontFamily:"inherit",marginBottom:12}}/>
-<label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--g500)",marginBottom:4}}>Current post-injury weekly earnings ($) <span style={{fontWeight:400}}>(if doing modified work)</span></label>
-<input type="number" value={earnings.postInjury} onChange={e=>setEarnings(p=>({...p,postInjury:e.target.value}))} placeholder="0 if fully off work" style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1px solid var(--card-border)",fontSize:14,outline:"none",background:"var(--g50)",fontFamily:"inherit",marginBottom:16}}/>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h3 style={{fontSize:20,fontWeight:700}}>Benefit Calculator</h3><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"var(--g400)"}}>×</button></div>
+<label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--g500)",marginBottom:4}}>Pre-injury gross weekly ($)</label>
+<input type="number" value={earnings.gross} onChange={e=>setEarnings(p=>({...p,gross:e.target.value}))} placeholder="e.g. 980" style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1px solid var(--card-border)",fontSize:14,outline:"none",background:"var(--g50)",fontFamily:"inherit",marginBottom:12}}/>
+<label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--g500)",marginBottom:4}}>Pre-injury net weekly ($)</label>
+<input type="number" value={earnings.net} onChange={e=>setEarnings(p=>({...p,net:e.target.value}))} placeholder="Auto if blank" style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1px solid var(--card-border)",fontSize:14,outline:"none",background:"var(--g50)",fontFamily:"inherit",marginBottom:12}}/>
+<label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--g500)",marginBottom:4}}>Post-injury weekly ($)</label>
+<input type="number" value={earnings.postInjury} onChange={e=>setEarnings(p=>({...p,postInjury:e.target.value}))} placeholder="0 if off work" style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1px solid var(--card-border)",fontSize:14,outline:"none",background:"var(--g50)",fontFamily:"inherit",marginBottom:16}}/>
 <button onClick={calc} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:"var(--blue)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"}}>Calculate Benefits</button>
-{result&&<div style={{marginTop:16}}>
-<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-<div style={{padding:12,background:"var(--blue-light)",borderRadius:12,border:"1px solid var(--blue-border)"}}><div style={{fontSize:10,fontWeight:600,color:"var(--blue)",textTransform:"uppercase",letterSpacing:.5}}>Weekly LOE (85%)</div><div style={{fontSize:20,fontWeight:800,color:"var(--blue)"}}>${result.loe85.toFixed(2)}</div></div>
-<div style={{padding:12,background:"var(--green-light)",borderRadius:12,border:"1px solid rgba(52,199,89,.15)"}}><div style={{fontSize:10,fontWeight:600,color:"var(--green)",textTransform:"uppercase",letterSpacing:.5}}>Monthly LOE</div><div style={{fontSize:20,fontWeight:800,color:"var(--green)"}}>${result.monthlyLOE}</div></div>
-<div style={{padding:12,background:"var(--g50)",borderRadius:12,border:"1px solid var(--card-border)"}}><div style={{fontSize:10,fontWeight:600,color:"var(--g500)",textTransform:"uppercase",letterSpacing:.5}}>NEL Range</div><div style={{fontSize:14,fontWeight:600,color:"var(--g700)"}}>{result.nelRange}</div></div>
-<div style={{padding:12,background:"var(--g50)",borderRadius:12,border:"1px solid var(--card-border)"}}><div style={{fontSize:10,fontWeight:600,color:"var(--g500)",textTransform:"uppercase",letterSpacing:.5}}>NEL Amount</div><div style={{fontSize:14,fontWeight:600,color:"var(--g700)"}}>{result.nelAmount}</div></div>
-</div>
-<div style={{padding:12,background:"var(--g50)",borderRadius:12,border:"1px solid var(--card-border)",fontSize:12,color:"var(--g600)",lineHeight:1.5}}>
-<strong>LOE Calculation:</strong> 85% × ${result.weeklyNet.toFixed(2)} net = ${result.loe85.toFixed(2)}/week{result.loeReduced<result.loe85?` (reduced by $${(result.loe85-result.loeReduced).toFixed(2)} post-injury earnings)`:""}<br/>
-<strong>Annual gross pre-injury:</strong> ${result.annualGross.toFixed(2)}<br/>
-{result.reviewDate&&<><strong>72-month LOE review:</strong> {new Date(result.reviewDate).toLocaleDateString("en-CA",{month:"long",day:"numeric",year:"numeric"})}</>}
-</div></div>}
+{result&&<div style={{marginTop:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+<div style={{padding:12,background:"var(--blue-light)",borderRadius:12}}><div style={{fontSize:10,fontWeight:600,color:"var(--blue)",textTransform:"uppercase"}}>Weekly LOE (85%)</div><div style={{fontSize:20,fontWeight:800,color:"var(--blue)"}}>${result.loe85.toFixed(2)}</div></div>
+<div style={{padding:12,background:"var(--green-light)",borderRadius:12}}><div style={{fontSize:10,fontWeight:600,color:"var(--green)",textTransform:"uppercase"}}>Monthly LOE</div><div style={{fontSize:20,fontWeight:800,color:"var(--green)"}}>${result.monthlyLOE}</div></div>
+<div style={{padding:12,background:"var(--g50)",borderRadius:12}}><div style={{fontSize:10,fontWeight:600,color:"var(--g500)",textTransform:"uppercase"}}>NEL Range</div><div style={{fontSize:14,fontWeight:600}}>{result.nelRange}</div></div>
+<div style={{padding:12,background:"var(--g50)",borderRadius:12}}><div style={{fontSize:10,fontWeight:600,color:"var(--g500)",textTransform:"uppercase"}}>NEL Amount</div><div style={{fontSize:14,fontWeight:600}}>{result.nelAmount}</div></div>
+</div>}
 </div></div>)}
 
-/* ═══ Analytics Dashboard ═══ */
 function AnalyticsDash({claims,onClose}){
 const total=claims.length;const byStage={};const byType={};const byRuling={allow:0,deny:0,investigate:0};
 claims.forEach(c=>{byStage[c.stage]=(byStage[c.stage]||0)+1;byType[c.injuryType]=(byType[c.injuryType]||0)+1;
 (c.analyses||[]).forEach(a=>{if(a.ruling==="Allow")byRuling.allow++;else if(a.ruling==="Deny")byRuling.deny++;else byRuling.investigate++})});
 const totalAnalyses=byRuling.allow+byRuling.deny+byRuling.investigate;
 const avgDocs=total>0?Math.round(claims.reduce((s,c)=>s+(c.documents?.length||0),0)/total):0;
-const avgAnalyses=total>0?Math.round(claims.reduce((s,c)=>s+(c.analyses?.length||0),0)/total*10)/10:0;
-
 return(<div onClick={e=>{if(e.target===e.currentTarget)onClose()}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(8px)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
 <div style={{background:"#fff",borderRadius:20,padding:"24px 20px",width:"100%",maxWidth:640,boxShadow:"0 20px 60px rgba(0,0,0,.15)",maxHeight:"90vh",overflowY:"auto"}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{fontSize:20,fontWeight:700,letterSpacing:-.5}}>Analytics</h3><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"var(--g400)"}}>×</button></div>
-
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{fontSize:20,fontWeight:700}}>Analytics</h3><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"var(--g400)"}}>×</button></div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8,marginBottom:14}}>
 <div style={{padding:14,background:"var(--g50)",borderRadius:12,textAlign:"center"}}><div style={{fontSize:28,fontWeight:800}}>{total}</div><div style={{fontSize:10,color:"var(--g500)"}}>Total Cases</div></div>
 <div style={{padding:14,background:"var(--green-light)",borderRadius:12,textAlign:"center"}}><div style={{fontSize:28,fontWeight:800,color:"var(--green)"}}>{byRuling.allow}</div><div style={{fontSize:10,color:"var(--g500)"}}>Allowed</div></div>
 <div style={{padding:14,background:"var(--red-light)",borderRadius:12,textAlign:"center"}}><div style={{fontSize:28,fontWeight:800,color:"var(--red)"}}>{byRuling.deny}</div><div style={{fontSize:10,color:"var(--g500)"}}>Denied</div></div>
-<div style={{padding:14,background:"var(--g50)",borderRadius:12,textAlign:"center"}}><div style={{fontSize:28,fontWeight:800}}>{avgDocs}</div><div style={{fontSize:10,color:"var(--g500)"}}>Avg Docs/Case</div></div>
+<div style={{padding:14,background:"var(--g50)",borderRadius:12,textAlign:"center"}}><div style={{fontSize:28,fontWeight:800}}>{avgDocs}</div><div style={{fontSize:10,color:"var(--g500)"}}>Avg Docs</div></div>
 </div>
-
 {totalAnalyses>0&&<div style={{marginBottom:14}}><div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Ruling Distribution</div>
 <div style={{height:24,display:"flex",borderRadius:8,overflow:"hidden",marginBottom:6}}>
-{byRuling.allow>0&&<div style={{width:`${(byRuling.allow/totalAnalyses)*100}%`,background:"var(--green)",transition:"width .5s"}}/>}
-{byRuling.deny>0&&<div style={{width:`${(byRuling.deny/totalAnalyses)*100}%`,background:"var(--red)",transition:"width .5s"}}/>}
-{byRuling.investigate>0&&<div style={{width:`${(byRuling.investigate/totalAnalyses)*100}%`,background:"var(--orange)",transition:"width .5s"}}/>}
-</div>
-<div style={{display:"flex",gap:16,fontSize:12,color:"var(--g500)"}}>
-<span><span style={{color:"var(--green)"}}>●</span> Allow {totalAnalyses>0?Math.round(byRuling.allow/totalAnalyses*100):0}%</span>
-<span><span style={{color:"var(--red)"}}>●</span> Deny {totalAnalyses>0?Math.round(byRuling.deny/totalAnalyses*100):0}%</span>
-<span><span style={{color:"var(--orange)"}}>●</span> Investigate {totalAnalyses>0?Math.round(byRuling.investigate/totalAnalyses*100):0}%</span>
+{byRuling.allow>0&&<div style={{width:`${(byRuling.allow/totalAnalyses)*100}%`,background:"var(--green)"}}/>}
+{byRuling.deny>0&&<div style={{width:`${(byRuling.deny/totalAnalyses)*100}%`,background:"var(--red)"}}/>}
+{byRuling.investigate>0&&<div style={{width:`${(byRuling.investigate/totalAnalyses)*100}%`,background:"var(--orange)"}}/>}
 </div></div>}
-
-<div style={{marginBottom:14}}><div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Cases by Stage</div>
+<div style={{marginBottom:14}}><div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>By Stage</div>
 {Object.entries(byStage).sort((a,b)=>b[1]-a[1]).map(([stage,count])=>{const s=STAGES.find(x=>x.id===stage)||{label:stage,color:"var(--g400)"};return(
 <div key={stage} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
 <span style={{width:10,height:10,borderRadius:"50%",background:s.color,flexShrink:0}}/>
 <span style={{fontSize:13,color:"var(--g700)",flex:1}}>{s.label}</span>
 <div style={{width:120,height:6,background:"var(--g200)",borderRadius:3,overflow:"hidden"}}><div style={{width:`${(count/total)*100}%`,height:"100%",background:s.color,borderRadius:3}}/></div>
-<span style={{fontSize:12,fontWeight:600,color:"var(--g700)",minWidth:24,textAlign:"right"}}>{count}</span>
+<span style={{fontSize:12,fontWeight:600,minWidth:24,textAlign:"right"}}>{count}</span>
 </div>)})}</div>
-
-<div><div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Cases by Injury Type</div>
+<div><div style={{fontSize:12,fontWeight:700,color:"var(--g400)",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>By Type</div>
 {Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([type,count])=>(
 <div key={type} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
 <span style={{fontSize:13,color:"var(--g700)",flex:1}}>{type}</span>
 <div style={{width:120,height:6,background:"var(--g200)",borderRadius:3,overflow:"hidden"}}><div style={{width:`${(count/total)*100}%`,height:"100%",background:"var(--blue)",borderRadius:3}}/></div>
-<span style={{fontSize:12,fontWeight:600,color:"var(--g700)",minWidth:24,textAlign:"right"}}>{count}</span>
+<span style={{fontSize:12,fontWeight:600,minWidth:24,textAlign:"right"}}>{count}</span>
 </div>))}</div>
 </div></div>)}
 
-/* === Document Q&A Questions === */
-const DOC_QUESTIONS=["What medications were prescribed?","What is the primary diagnosis and ICD-10 code?","When was the injury first reported?","What are the current functional limitations?","What is the recommended treatment plan?","When is the expected return-to-work date?","Are there any pre-existing conditions?","What imaging or tests were ordered?","Does the employer dispute this claim?","Who were the treating physicians?","What is the mechanism of injury?","Are there inconsistencies between documents?"];
-
-const STAGE_QUESTIONS={new:["Is this compensable under WSIB?","Any jurisdictional issues?","What is the mechanism of injury?","Was reporting timely?"],review:["Does medical evidence support diagnosis?","Are there treatment gaps?","Is the employer disputing?","What evidence is needed?"],investigating:["What evidence is missing?","Are there contradictions?","Should we request an IME?"],approved:["Is RTW progressing as expected?","Should benefits be adjusted?"],denied:["What are the denial grounds?","Which OPM sections support appeal?","Does benefit of doubt apply?"],appeal:["Strongest appeal argument?","Precedent WSIAT decisions?","What evidence gaps to fill?"],closed:["Should this be reopened?"]};
-
-/* === Red Flag Engine === */
-function getRedFlags(c){const f=[];if(!c)return f;const inj=c.injuryDate&&c.injuryDate!=="\u2014"?new Date(c.injuryDate):null;const cr=new Date(c.createdAt);const docs=c.documents||[];const has=t=>docs.some(d=>d.tag===t);
-if(inj){const rd=Math.floor((cr-inj)/(864e5));if(rd>7)f.push({severity:"high",label:"Late reporting ("+rd+"d)",desc:"Claim created "+rd+" days after injury",icon:"●"});if(rd>21)f.push({severity:"critical",label:"Severely delayed reporting",desc:rd+"-day delay raises credibility concerns",icon:"●"})}
-if(!has("form6")&&docs.length>0)f.push({severity:"medium",label:"Missing Form 6",desc:"Worker report not on file",icon:"●"});
-if(!has("form7")&&docs.length>0)f.push({severity:"high",label:"Missing Form 7",desc:"Employer report not on file",icon:"●"});
-if(!has("form8")&&c.stage!=="new")f.push({severity:"medium",label:"Missing Form 8",desc:"Health professional report missing",icon:"●"});
-if(!docs.some(d=>["medical","imaging","specialist","physio"].includes(d.tag))&&c.stage!=="new")f.push({severity:"medium",label:"No medical evidence",desc:"No medical reports on file",icon:"●"});
-if(/pre-existing|aggravation/i.test(c.injuryType||""))f.push({severity:"medium",label:"Pre-existing condition",desc:"Thin skull principle may apply",icon:"●"});
-if(c.analyses?.length>1&&new Set(c.analyses.map(a=>a.ruling)).size>1)f.push({severity:"medium",label:"Inconsistent rulings",desc:"Multiple analyses produced different outcomes",icon:"●"});
-if(inj&&Math.floor((Date.now()-inj)/864e5)>90&&c.stage==="new")f.push({severity:"high",label:"Stale claim",desc:"In New status over 90 days",icon:"●"});
-return f.sort((a,b)=>({critical:0,high:1,medium:2,low:3}[a.severity]||3)-({critical:0,high:1,medium:2,low:3}[b.severity]||3))}
-
-/* === Claim Strength Score === */
-function getClaimStrength(claim){if(!claim)return null;let s=0,mx=0;const f=[];const docs=claim.documents||[];const has=t=>docs.some(d=>d.tag===t);
-const chk=(l,met,pts)=>{mx+=pts;if(met)s+=pts;f.push({label:l,met})};
-chk("Form 6",has("form6"),15);chk("Form 7",has("form7"),15);chk("Form 8",has("form8"),10);
-chk("Medical evidence",docs.some(d=>["medical","imaging","specialist","physio"].includes(d.tag)),15);chk("Witness",has("witness"),10);
-const inj=claim.injuryDate&&claim.injuryDate!=="\u2014"?new Date(claim.injuryDate):null;
-if(inj)chk("Timely reporting",Math.floor((new Date(claim.createdAt)-inj)/864e5)<=3,5);
-chk("Detailed description",(claim.description?.length||0)>50,10);
-const lr=claim.analyses?.[claim.analyses.length-1]?.ruling;
-if(lr==="Allow"){mx+=10;s+=10;f.push({label:"AI: Allow",met:true})}else if(lr==="Deny"){mx+=10;f.push({label:"AI: Deny",met:false})}else if(lr){mx+=10;s+=5;f.push({label:"AI: Investigate",met:null})}
-chk("No critical flags",getRedFlags(claim).filter(x=>x.severity==="critical"||x.severity==="high").length===0,10);
-const pct=mx>0?Math.round(s/mx*100):0;return{score:pct,grade:pct>=80?"Strong":pct>=60?"Moderate":pct>=40?"Weak":"Insufficient",color:pct>=80?"var(--green)":pct>=60?"var(--blue)":pct>=40?"var(--orange)":"var(--red)",factors:f}}
-
-/* === What is Missing === */
-function getWhatsNeeded(c){if(!c)return[];const n=[];const docs=c.documents||[];const has=t=>docs.some(d=>d.tag===t);
-if(!has("form6"))n.push({label:"Form 6 (Worker Report)",priority:"required",desc:"Essential for claim establishment"});
-if(!has("form7"))n.push({label:"Form 7 (Employer Report)",priority:"required",desc:"Must be filed within 3 business days"});
-if(!has("form8")&&c.stage!=="new")n.push({label:"Form 8 (Health Professional)",priority:"required",desc:"Medical confirmation"});
-if(!docs.some(d=>["medical","specialist"].includes(d.tag))&&c.stage!=="new")n.push({label:"Medical report",priority:"recommended",desc:"Clinical evidence"});
-if(!has("imaging")&&/back|lumbar|spinal|fracture|disc/i.test(c.description||""))n.push({label:"Diagnostic imaging",priority:"recommended",desc:"Objective evidence"});
-if(!(c.analyses?.length)&&c.stage!=="closed")n.push({label:"AI analysis",priority:"recommended",desc:"Run the Five Point Check"});
-return n}
-
-/* === Cost Forecast === */
-function getClaimCostForecast(c){if(!c?.injuryDate||c.injuryDate==="\u2014")return null;
-const r={"Acute Injury":{l:8000,h:25000,w:6},"Occupational Disease":{l:15000,h:80000,w:16},"Traumatic Mental Stress":{l:12000,h:45000,w:12},"Chronic Mental Stress":{l:20000,h:90000,w:20},"PTSD (First Responder)":{l:15000,h:60000,w:12},"Recurrence":{l:5000,h:20000,w:6},"Aggravation of Pre-existing":{l:10000,h:50000,w:10}}[c.injuryType]||{l:10000,h:40000,w:8};
-const we=Math.floor((Date.now()-new Date(c.injuryDate))/(864e5*7));return{lowEst:r.l,highEst:r.h,avgWeeks:r.w,weeksElapsed:we,expectedResolution:Math.max(1,r.w-we)}}
-
-/* === Notifications === */
-function getNotifications(claims){const n=[];claims.forEach(c=>{
-getDeadlines(c).forEach(d=>{if(d.status==="overdue")n.push({type:"urgent",icon:"●",title:c.claimNumber+": "+d.label,desc:"Overdue by "+Math.abs(d.daysLeft)+" days",caseId:c.id});else if(d.daysLeft<=3&&d.daysLeft>=0)n.push({type:"warning",icon:"●",title:c.claimNumber+": "+d.label,desc:"Due in "+d.daysLeft+" days",caseId:c.id})});
-if(c.stage==="new"&&!c.analyses?.length)n.push({type:"info",icon:"●",title:c.claimNumber+": Needs analysis",desc:"Run the AI adjudication",caseId:c.id});
-const fl=getRedFlags(c).filter(f=>f.severity==="critical"||f.severity==="high");if(fl.length)n.push({type:"urgent",icon:"●",title:c.claimNumber+": "+fl.length+" red flag"+(fl.length>1?"s":""),desc:fl[0].label,caseId:c.id});
-const miss=getWhatsNeeded(c).filter(m=>m.priority==="required");if(miss.length&&c.stage!=="closed")n.push({type:"warning",icon:"●",title:c.claimNumber+": Missing docs",desc:miss.map(m=>m.label).join(", "),caseId:c.id})});
-return n.sort((a,b)=>({urgent:0,warning:1,info:2}[a.type]||2)-({urgent:0,warning:1,info:2}[b.type]||2))}
-
-/* === Benchmarks === */
-function getBenchmark(t){return{"Acute Injury":{d:14,docs:5,an:2,rate:82},"Occupational Disease":{d:35,docs:8,an:3,rate:65},"Traumatic Mental Stress":{d:28,docs:6,an:3,rate:58},"PTSD (First Responder)":{d:21,docs:5,an:2,rate:88},"Recurrence":{d:10,docs:4,an:2,rate:75},"Aggravation of Pre-existing":{d:28,docs:7,an:3,rate:62}}[t]||{d:21,docs:5,an:2,rate:70}}
-
-/* === GLOSSARY === */
-const GLOSSARY={
-"Form 6":"Worker's Report of Injury/Disease. Filed by the injured worker to report what happened, when, where, and how. This is the worker's own account of the incident.",
-"Form 7":"Employer's Report of Injury/Disease. Filed by the employer to WSIB within 3 business days of learning of the injury. Includes job duties, witness info, and modified work availability.",
-"Form 8":"Health Professional's Report. Filed by the treating physician confirming the diagnosis, treatment plan, functional limitations, and expected recovery timeline.",
-"LOE":"Loss of Earnings benefits. Paid at 85% of the worker's pre-injury net earnings. Reviewed at 72 months.",
-"NEL":"Non-Economic Loss benefit. A lump-sum payment for permanent impairment, based on the degree of impairment (1-100%).",
-"OPM":"Operational Policy Manual. The WSIB's official policy guide used by adjudicators to make claim decisions.",
-"RTW":"Return to Work. The process of safely transitioning an injured worker back to their job, potentially with modified duties.",
-"WSIAT":"Workplace Safety and Insurance Appeals Tribunal. The final level of appeal, independent from WSIB.",
-"ARO":"Appeals Resolution Officer. The first level of appeal within WSIB's Appeals Services Division.",
-"ASD":"Appeals Services Division. The WSIB department that handles formal appeals after an Intent to Object is filed.",
-"Five Point Check":"The 5 criteria every claim must meet: (1) active employer account, (2) worker performing duties, (3) injury/disease occurred, (4) arose from employment, (5) resulting disability.",
-"FROI":"First Report of Injury. The initial report filed when a workplace injury occurs.",
-"Thin Skull":"Legal principle: WSIB takes the worker as they find them. A pre-existing condition does not bar a claim if work aggravated it.",
-"Benefit of Doubt":"OPM 11-01-13: When evidence is approximately equal for and against, the issue is resolved in favor of the worker.",
-"IME":"Independent Medical Examination. An assessment by a physician chosen by WSIB or the employer to evaluate the worker's condition.",
-"COLA":"Cost of Living Adjustment. Annual adjustment to long-term LOE benefits based on CPI.",
-"AWW":"Average Weekly Wage. The baseline earnings figure used to calculate LOE benefits.",
-"Modified Duties":"Temporary alternative work tasks that accommodate the worker's functional limitations during recovery.",
-"Recurrence":"A return of symptoms or disability from a previously allowed claim, without a new workplace incident.",
-"Aggravation":"Worsening of a pre-existing condition caused by a workplace incident. The thin skull principle applies.",
-"PTSD Presumptive":"OPM 15-03-13: First responders with diagnosed PTSD are presumed to have a work-related condition unless proven otherwise.",
-"Section 111":"CMS reporting requirement for Medicare-eligible claimants. Ensures proper coordination of benefits.",
-"72-Month Review":"Mandatory review of LOE benefits at the 72-month mark. Benefits may continue, be reduced, or be converted to a FEL supplement."
-};
-
-/* === APPEAL STAGES === */
-const APPEAL_STAGES=[
-{id:"intent",label:"Intent to Object",desc:"File within 30 days (RTW) or 6 months (other). Notify WSIB you disagree with their decision.",deadline:"30 days (RTW) / 6 months (other)",docs:["Intent to Object form","Copy of WSIB decision letter","Brief statement of disagreement"],status:"pending"},
-{id:"reconsider",label:"Reconsideration",desc:"WSIB reviews the original decision with any new evidence you provide.",deadline:"No fixed timeline",docs:["New medical evidence","Updated functional abilities form","Employer response (if applicable)"],status:"pending"},
-{id:"aro",label:"ARO Hearing",desc:"Appeals Resolution Officer reviews your case. Usually a written or oral hearing.",deadline:"Decision within 30 days target",docs:["Appeal Readiness Form","All supporting medical records","Legal submissions","Witness statements"],status:"pending"},
-{id:"wsiat",label:"WSIAT Tribunal",desc:"Final appeal to the independent Workplace Safety and Insurance Appeals Tribunal.",deadline:"Must file within 6 months of ARO decision",docs:["Notice of Appeal to WSIAT","Complete case file","Legal brief","Expert medical opinions"],status:"pending"}
-];
-
-/* === INTAKE WIZARD STEPS === */
-const INTAKE_STEPS=[
-{id:"worker",label:"Worker Info",fields:["worker","employer"]},
-{id:"injury",label:"Injury Details",fields:["injuryDate","injuryType","description"]},
-{id:"documents",label:"Documents",fields:["documents"]},
-{id:"review",label:"Review",fields:[]}
-];
-
-
-/* === Medical Provider Tracking === */
-const PROVIDER_TYPES=["Family Doctor","Emergency","Specialist","Surgeon","Physiotherapist","Chiropractor","Psychologist","Imaging Clinic","Pharmacy","Other"];
-
-/* === Letter Templates === */
-const LETTER_TEMPLATES=[
-{id:"representation",label:"Letter of Representation",desc:"Notify WSIB that you represent the injured worker",prompt:"Generate a formal Letter of Representation for this WSIB claim. Include: lawyer/firm name placeholder, worker name, employer name, claim number, injury date, and a statement that all future correspondence should be directed to the representative. Format as a professional letter."},
-{id:"records_request",label:"Medical Records Request",desc:"Request records from a treating physician",prompt:"Generate a Medical Records Request letter for this WSIB claim. Include: provider name placeholder, worker name, date of injury, claim number, request for all clinical notes, diagnostic imaging, treatment plans, and functional abilities information from date of injury to present. Reference WSIB's authority to share information under the WSIA."},
-{id:"intent_object",label:"Intent to Object",desc:"Notify WSIB you disagree with a decision",prompt:"Generate an Intent to Object letter for this WSIB claim that has been denied. Include: worker name, claim number, date of WSIB decision, specific grounds for objection, request for reconsideration, and statement preserving appeal rights. Reference OPM 11-01-13 benefit of doubt."},
-{id:"employer_response",label:"Employer Response Request",desc:"Request information from the employer",prompt:"Generate a letter requesting information from the employer regarding this WSIB claim. Include: employer name, worker name, claim number, request for job description, modified duties availability, witness statements, and incident investigation report."},
-{id:"faf_request",label:"FAF Update Request",desc:"Request updated Functional Abilities Form",prompt:"Generate a letter to the treating physician requesting an updated Functional Abilities Form (FAF) for this WSIB claim. Include: worker name, claim number, current treatment status, and request for updated physical restrictions and return-to-work recommendations."}
-];
-
-/* === Claim Valuation Fields === */
-const VALUATION_FIELDS=[
-{id:"medicalToDate",label:"Medical Costs to Date",desc:"Total medical expenses incurred"},
-{id:"medicalFuture",label:"Projected Future Medical",desc:"Estimated remaining treatment costs"},
-{id:"loeToDate",label:"LOE Benefits to Date",desc:"Loss of earnings paid so far"},
-{id:"loeFuture",label:"Projected Future LOE",desc:"Estimated remaining wage loss"},
-{id:"nel",label:"NEL Award Estimate",desc:"Non-Economic Loss lump sum"},
-{id:"legalFees",label:"Legal Fees",desc:"Contingency or hourly fees"},
-{id:"disbursements",label:"Disbursements",desc:"Filing fees, expert reports, travel"},
-{id:"otherCosts",label:"Other Costs",desc:"Any additional claim-related costs"}
-];
-
-
-/* === Risk Assessment Score === */
-function getRiskScore(claim){if(!claim)return null;let risk=0;const factors=[];
-const inj=claim.injuryDate&&claim.injuryDate!=="\u2014"?new Date(claim.injuryDate):null;
-if(inj){const days=Math.floor((Date.now()-inj)/864e5);if(days>90)risk+=3;else if(days>30)risk+=1;factors.push({label:"Days open: "+days,impact:days>90?"high":days>30?"medium":"low"})}
-const flags=getRedFlags(claim);risk+=flags.filter(f=>f.severity==="critical").length*4;risk+=flags.filter(f=>f.severity==="high").length*2;risk+=flags.filter(f=>f.severity==="medium").length;
-if(flags.length>0)factors.push({label:flags.length+" red flag"+(flags.length>1?"s":""),impact:flags.some(f=>f.severity==="critical")?"high":"medium"});
-if(/mental|ptsd|chronic/i.test(claim.injuryType||""))risk+=2;
-if(!claim.documents?.length)risk+=2;
-if(!claim.analyses?.length)risk+=1;
-const dl=getDeadlines(claim);const overdue=dl.filter(d=>d.status==="overdue");risk+=overdue.length*2;
-if(overdue.length)factors.push({label:overdue.length+" overdue deadline"+(overdue.length>1?"s":""),impact:"high"});
-const level=risk>=10?"Critical":risk>=6?"High":risk>=3?"Medium":"Low";
-const color=risk>=10?"var(--red)":risk>=6?"var(--orange)":risk>=3?"var(--blue)":"var(--green)";
-return{score:risk,level,color,factors}}
-
-/* === Three-Point Contact === */
-function getThreePointContact(claim){return{
-worker:{label:"Injured Worker",contacted:claim.threePoint?.worker||false,date:claim.threePoint?.workerDate||null},
-employer:{label:"Employer",contacted:claim.threePoint?.employer||false,date:claim.threePoint?.employerDate||null},
-medical:{label:"Medical Provider",contacted:claim.threePoint?.medical||false,date:claim.threePoint?.medicalDate||null}
-}}
-
-/* === AWW Calculator === */
-function calcAWW(grossWeekly){if(!grossWeekly||grossWeekly<=0)return null;
-const cpp=grossWeekly*0.0595;const ei=grossWeekly*0.0229;const fedTax=grossWeekly*0.15;const provTax=grossWeekly*0.0505;
-const netWeekly=grossWeekly-cpp-ei-fedTax-provTax;const loe85=netWeekly*0.85;
-return{gross:grossWeekly,cpp:cpp.toFixed(2),ei:ei.toFixed(2),fedTax:fedTax.toFixed(2),provTax:provTax.toFixed(2),net:netWeekly.toFixed(2),loe85:loe85.toFixed(2),loeMonthly:(loe85*4.33).toFixed(2)}}
-
-
-
-/* === CASE WORKFLOW ENGINE === */
-const WORKFLOW_STEPS=[
-{id:"report",phase:"Intake",title:"Report the Injury",desc:"File the initial injury report with WSIB within required timelines.",checks:[{id:"form6",label:"Form 6 (Worker Report) filed",test:c=>c.documents?.some(d=>d.tag==="form6")},{id:"form7",label:"Form 7 (Employer Report) filed",test:c=>c.documents?.some(d=>d.tag==="form7")},{id:"description",label:"Incident description documented",test:c=>(!!c.description&&c.description.length>10)||c.documents?.some(d=>d.tag==="form6")}],action:"Upload Form 6 and Form 7, and add a detailed incident description.",actionNav:"documents"},
-{id:"contact",phase:"Intake",title:"Initial Three-Point Contact",desc:"Contact the worker, employer, and medical provider within 24 hours.",checks:[{id:"worker_contact",label:"Worker contacted",test:c=>c.threePoint?.worker},{id:"employer_contact",label:"Employer contacted",test:c=>c.threePoint?.employer},{id:"medical_contact",label:"Medical provider contacted",test:c=>c.threePoint?.medical}],action:"Complete the Three-Point Contact on the Overview tab.",actionNav:"overview"},
-{id:"medical",phase:"Evidence",title:"Gather Medical Evidence",desc:"Collect Form 8, clinical notes, imaging, and functional abilities information.",checks:[{id:"form8",label:"Form 8 (Physician Report) received",test:c=>c.documents?.some(d=>d.tag==="form8")},{id:"medical_doc",label:"Medical records obtained",test:c=>c.documents?.some(d=>["medical","specialist","imaging","physio"].includes(d.tag))},{id:"provider_tracked",label:"Treating providers tracked",test:c=>c.providers?.length>0}],action:"Upload Form 8 and medical records. Track providers on the Providers tab.",actionNav:"providers"},
-{id:"analyze",phase:"Assessment",title:"Run AI Analysis",desc:"Analyze the claim against the WSIB OPM using the Five Point Check.",checks:[{id:"analysis_done",label:"AI ruling analysis completed",test:c=>c.analyses?.length>0},{id:"red_flags_reviewed",label:"Red flags reviewed",test:c=>c.analyses?.length>0}],action:"Open the Advisor and run a Five Point Check analysis.",actionNav:"chat"},
-{id:"decision",phase:"Assessment",title:"Review Decision",desc:"Review the ruling, calculate benefits, and update the claim status.",checks:[{id:"ruling_received",label:"Ruling or prediction received",test:c=>c.analyses?.length>0||c.stage==="approved"||c.stage==="denied"},{id:"benefits_calc",label:"Benefit entitlements calculated",test:c=>{const v=c.valuation||{};return Object.values(v).some(x=>parseFloat(x)>0)}},{id:"stage_set",label:"Claim status updated",test:c=>c.stage!=="new"}],action:"Update claim status and enter benefit calculations on the Value tab.",actionNav:"valuation"},
-{id:"rtw",phase:"Resolution",title:"Return-to-Work Planning",desc:"Coordinate modified duties, track recovery, and plan the return to work.",checks:[{id:"modified_duties",label:"Modified duties documented",test:c=>c.modifiedDuties?.length>0},{id:"faf_obtained",label:"Functional Abilities Form obtained",test:c=>c.documents?.some(d=>(d.name||"").toLowerCase().includes("faf")||(d.name||"").toLowerCase().includes("functional"))}],action:"Record modified duties and request an updated FAF from the treating physician.",actionNav:"modified"},
-{id:"resolve",phase:"Resolution",title:"Close or Appeal",desc:"Resolve the claim through closure, settlement, or begin the appeal process.",checks:[{id:"resolved",label:"Claim resolved or appeal filed",test:c=>c.stage==="closed"||c.stage==="approved"||(c.appeal?.stage&&c.appeal.stage!=="none")}],action:"Update the claim to its final status or start the appeal process.",actionNav:"appeal"}
-];
-
-/* === AI Brief (Gong-style) === */
-function getAIBrief(claim){if(!claim)return"";const parts=[];
-const days=claim.injuryDate&&claim.injuryDate!=="\u2014"?Math.floor((Date.now()-new Date(claim.injuryDate))/864e5):0;
-parts.push(claim.worker+" vs "+claim.employer+" - "+claim.injuryType+" (Day "+days+").");
-const wf=getWorkflowStatus(claim);parts.push("Progress: "+wf.pct+"% ("+wf.steps.filter(s=>s.complete).length+"/"+wf.steps.length+" steps).");
-if(wf.currentIdx<wf.steps.length&&!wf.steps[wf.currentIdx].complete)parts.push("Next: "+wf.steps[wf.currentIdx].title+".");
-const rs=getRiskScore(claim);if(rs)parts.push("Risk: "+rs.level+".");
-const lr=claim.analyses?.[claim.analyses.length-1];if(lr)parts.push("Ruling: "+lr.ruling+".");
-const dl=getDeadlines(claim);const overdue=dl.filter(d=>d.status==="overdue");if(overdue.length)parts.push(overdue.length+" overdue.");
-const flags=getRedFlags(claim);if(flags.length)parts.push(flags.length+" red flags.");
-return parts.join(" ")}
-
-/* === Smart Warnings (Gong-style) === */
-function getSmartWarnings(claim){if(!claim)return[];const w=[];
-const lastAct=claim.timeline?.[claim.timeline.length-1];
-if(lastAct){const d=Math.floor((Date.now()-new Date(lastAct.date))/864e5);
-if(d>=14)w.push({type:"critical",label:"Going Dark",desc:"No activity for "+d+" d"});
-else if(d>=7)w.push({type:"warning",label:"Losing Momentum",desc:"No activity for "+d+" d"});}
-if(!claim.threePoint?.worker&&!claim.threePoint?.employer)w.push({type:"warning",label:"No Contact",desc:"Three-point contact incomplete"});
-if((claim.documents?.length||0)===0&&claim.stage!=="new")w.push({type:"critical",label:"No Evidence",desc:"No documents uploaded"});
-if(!claim.analyses?.length&&(claim.documents?.length||0)>0)w.push({type:"warning",label:"Needs Analysis",desc:"Docs uploaded, no AI analysis"});
-if(claim.stage==="denied"&&!(claim.appeal?.stage))w.push({type:"critical",label:"No Appeal",desc:"Denied, appeal not started"});
-return w}
-
-function getWorkflowStatus(claim){if(!claim)return{steps:[],currentIdx:0,pct:0};const steps=WORKFLOW_STEPS.map(s=>{const checks=s.checks.map(ch=>({...ch,done:ch.test(claim)}));const complete=checks.every(ch=>ch.done);const partial=checks.some(ch=>ch.done);return{...s,checks,complete,partial}});let currentIdx=steps.findIndex(s=>!s.complete);if(currentIdx<0)currentIdx=steps.length-1;const done=steps.filter(s=>s.complete).length;const pct=Math.round((done/steps.length)*100);return{steps,currentIdx,pct}}
-
-
-
-/* === PII Redaction Engine === */
-const PII_PATTERNS=[
-{name:"SIN",pattern:/\d{3}[-\s]?\d{3}[-\s]?\d{3}/g,replace:"[SIN-REDACTED]"},
-{name:"Phone",pattern:/(?:\+?1[-\s]?)?\(?\d{3}\)?[-\s]?\d{3}[-\s]?\d{4}/g,replace:"[PHONE-REDACTED]"},
-{name:"Email",pattern:/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,replace:"[EMAIL-REDACTED]"},
-{name:"DOB",pattern:/\b(?:DOB|Date of Birth|Born)[:\s]*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}/gi,replace:"[DOB-REDACTED]"},
-{name:"DOB-numeric",pattern:/\b(?:DOB|Date of Birth|Born)[:\s]*\d{4}[-\/]\d{2}[-\/]\d{2}/gi,replace:"[DOB-REDACTED]"},
-{name:"Postal",pattern:/\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b/gi,replace:"[POSTAL-REDACTED]"},
-{name:"Address",pattern:/\d+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd|Crescent|Cres|Court|Ct|Lane|Ln|Way|Place|Pl|Circle|Cir)[\.\s,]*/gi,replace:"[ADDRESS-REDACTED]"},
-{name:"HealthCard",pattern:/\b\d{4}[-\s]?\d{3}[-\s]?\d{3}[-\s]?[A-Z]{2}\b/g,replace:"[HEALTHCARD-REDACTED]"},
-];
-function redactPII(text,level){
-if(!text||level==="off")return text;
-let redacted=text;
-let count=0;
-PII_PATTERNS.forEach(p=>{
-if(level==="maximum"||(level==="standard"&&!["Address"].includes(p.name))){
-const matches=redacted.match(p.pattern);
-if(matches)count+=matches.length;
-redacted=redacted.replace(p.pattern,p.replace);
-}});
-if(level==="maximum"){
-/* Also redact full names — replace "FirstName LastName" patterns after common labels */
-redacted=redacted.replace(/(?:Worker|Patient|Employee|Claimant|Name)[:\s]+([A-Z][a-z]+\s+[A-Z]?\.?\s*[A-Z][a-z]+)/g,(m,name)=>"Worker: [NAME-REDACTED]");
-}
-return redacted;
-}
-function countPII(text){
-if(!text)return 0;
-let count=0;
-PII_PATTERNS.forEach(p=>{const m=text.match(p.pattern);if(m)count+=m.length});
-return count;
-}
-
-/* === Inline Help Tooltips === */
-const WSIB_TERMS={"OPM":"Operational Policy Manual - WSIB\'s official policy guide for claim adjudication","LOE":"Loss of Earnings - wage replacement benefit at 85% of net pre-injury earnings","NEL":"Non-Economic Loss - lump sum for permanent impairment","FAF":"Functional Abilities Form - physician report on work restrictions","Form 6":"Worker\'s Report of Injury - filed by the injured worker","Form 7":"Employer\'s Report of Injury - must be filed within 3 business days","Form 8":"Health Professional\'s Report - filed by the treating physician","RTW":"Return to Work - the process of getting the worker back to employment","WSIB":"Workplace Safety and Insurance Board - Ontario\'s workers compensation authority","WSIAT":"Workplace Safety and Insurance Appeals Tribunal - handles WSIB appeals","PIPEDA":"Personal Information Protection and Electronic Documents Act","ICD-10":"International Classification of Diseases, 10th Revision","AWW":"Average Weekly Wage - used to calculate LOE benefits","WSIA":"Workplace Safety and Insurance Act - the governing legislation","TPA":"Third Party Administrator - manages claims on behalf of employers","FROI":"First Report of Injury - initial claim filing","CRT":"Claims Review Tribunal","SIEF":"Second Injury and Enhancement Fund"};
-
-
-/* === OPM Policy Reference Panel Data === */
-const OPM_POLICIES={
-"11-01-01":{url:"https://www.wsib.ca/en/operational-policy-manual/adjudicative-process",title:"Five Point Check",chapter:"Decision-Making",text:"ALL five points required for entitlement: 1) Account in good standing, 2) Worker performing duties of employment, 3) Personal injury by accident or occupational disease, 4) Arising out of and in the course of employment, 5) Resulting disability or loss of earnings. If all five points are met, claim is straightforward, and employer is not disputing — allow immediately.",applies:["all"]},
-"11-01-02":{title:"Decision-Making Process",chapter:"Decision-Making",text:"WSIB uses an inquiry system, not adversarial. Decision-makers actively investigate facts. Not bound by precedent but must follow policy. Appeal path: Decision-maker then Appeals Resolution Officer then Appeals Services Division then WSIAT.",applies:["all"]},
-"11-01-03":{url:"https://www.wsib.ca/en/operational-policy-manual/merits-and-justice",title:"Merits and Justice",chapter:"Decision-Making",text:"Must consider all provisions of WSIA/WCA, all applicable OPM policies, and all available evidence. Cannot disregard the Act or established policies. The goal is a fair and just outcome based on individual circumstances.",applies:["all"]},
-"11-01-06":{url:"https://www.wsib.ca/en/operational-policy-manual/recurrences",title:"Recurrences",chapter:"Decision-Making",text:"A recurrence is a return of symptoms of a previously allowed injury. Must establish: original injury was work-related, current symptoms relate to original injury, no new intervening cause. Does not require a new accident.",applies:["Recurrence"]},
-"11-01-13":{url:"https://www.wsib.ca/en/operational-policy-manual/benefit-doubt",title:"Benefit of Doubt",chapter:"Decision-Making",text:"When evidence is equally balanced after full investigation, favour the claimant. Not a substitute for gathering evidence. Only applies when evidence is genuinely equal after thorough investigation. Must not be used to avoid investigation.",applies:["all"]},
-"15-01-01":{url:"https://www.wsib.ca/en/operational-policy-manual/reporting-obligations",title:"Reporting Requirements",chapter:"Claims",text:"Employers: Form 7 within 3 business days of learning of injury. Workers: file claim within 6 months. Health professionals: Form 8 on first visit. Late reporting does not bar a claim but may affect credibility.",applies:["all"]},
-"15-02-01":{url:"https://www.wsib.ca/en/operational-policy-manual/arising-out-and-course-employment",title:"Work Relatedness",chapter:"Claims",text:'Two-part test: "arising out of" + "in the course of" employment. Both required. Employment must be a significant contributing factor. Does not need to be sole or primary cause.',applies:["all"]},
-"15-02-02":{url:"https://www.wsib.ca/en/operational-policy-manual/arising-out-and-course-employment",title:"Arising Out of Employment",chapter:"Claims",text:"Employment must be a significant contributing factor to the injury. Pre-existing conditions: if work aggravated, accelerated, or activated a pre-existing condition, the claim is compensable under the thin skull principle.",applies:["all"]},
-"15-03-02":{url:"https://www.wsib.ca/en/operational-policy-manual/traumatic-mental-stress",title:"Traumatic Mental Stress",chapter:"Claims",text:"Must result from acute reaction to sudden/unexpected traumatic event(s). Must be clearly and precisely identifiable. Chronic workplace stress is NOT covered under this policy (see 15-03-14).",applies:["Traumatic Mental Stress"]},
-"15-03-13":{url:"https://www.wsib.ca/en/operational-policy-manual/post-traumatic-stress-disorder",title:"PTSD First Responders",chapter:"Claims",text:"Presumptive coverage for diagnosed PTSD in first responders (police, fire, paramedics, corrections, dispatchers). Diagnosis from appropriate healthcare practitioner required. Presumption applies unless evidence to the contrary.",applies:["PTSD (First Responder)"]},
-"15-03-14":{url:"https://www.wsib.ca/en/operational-policy-manual/chronic-mental-stress",title:"Chronic Mental Stress",chapter:"Claims",text:"Effective January 1, 2018. Covers chronic mental stress caused by substantial work-related stressor(s). Must be diagnosed by appropriate healthcare professional. Excludes decisions/actions of employer related to employment (hiring, firing, transfers, discipline).",applies:["Chronic Mental Stress"]},
-"15-04-01":{url:"https://www.wsib.ca/en/operational-policy-manual/pre-existing-conditions",title:"Pre-existing Conditions",chapter:"Claims",text:"Thin skull principle: take the worker as you find them. If work injury aggravates, accelerates, or activates a pre-existing condition, the entire resulting disability is compensable. WSIB covers the full disability.",applies:["all"]},
-"18-01-01":{url:"https://www.wsib.ca/en/operational-policy-manual/determining-average-earnings",title:"Loss of Earnings (LOE)",chapter:"Benefits",text:"Post-1998 injuries: 85% of net average earnings minus post-injury earnings. First 12 weeks based on current employment. After 12 weeks: long-term average considered. LOE review at 72 months — final determination.",applies:["all"]},
-"18-02-01":{url:"https://www.wsib.ca/en/operational-policy-manual/non-economic-loss",title:"Non-Economic Loss (NEL)",chapter:"Benefits",text:"For permanent impairment from 1990+ injuries. Assessed using AMA Guides. Lump sum based on % whole person impairment.",applies:["all"]},
-"19-01-01":{url:"https://www.wsib.ca/en/operational-policy-manual/return-work",title:"RTW Obligations",chapter:"Return to Work",text:"Workers: obligation to co-operate in return to work. Employers: obligation to re-employ (if 20+ employees) and accommodate. Modified work: must be productive, meaningful, and consistent with functional abilities.",applies:["all"]},
-"19-02-01":{url:"https://www.wsib.ca/en/operational-policy-manual/return-work",title:"Modified Work",chapter:"Return to Work",text:"Based on Functional Abilities Form (FAF). Must be within documented restrictions. Must be productive and meaningful. Employer must provide details in writing. Progressive return encouraged.",applies:["all"]}
-};
-function getRelevantPolicies(claim){const type=claim?.injuryType||"";return Object.entries(OPM_POLICIES).filter(([k,v])=>v.applies.includes("all")||v.applies.includes(type)).map(([k,v])=>({code:k,...v}))}
-
-/* === AI Tools for Lawyers & Adjudicators === */
-const AI_TOOLS=[
-{id:"evidence_check",category:"Assessment",title:"Evidence Sufficiency Check",desc:"Review all evidence and flag gaps before making a decision or filing.",icon:"EC",color:"#E53935",prompt:c=>"Perform a comprehensive evidence sufficiency check for this claim. Review all documents on file ("+((c.documents||[]).map(d=>d.tag).join(", ")||"none")+") and determine:\n\n1. REQUIRED EVIDENCE STATUS:\n- Form 6 (Worker Report): "+(c.documents?.some(d=>d.tag==="form6")?"Present":"MISSING")+"\n- Form 7 (Employer Report): "+(c.documents?.some(d=>d.tag==="form7")?"Present":"MISSING")+"\n- Form 8 (Physician Report): "+(c.documents?.some(d=>d.tag==="form8")?"Present":"MISSING")+"\n- Medical records: "+(c.documents?.some(d=>["medical","specialist","imaging","physio"].includes(d.tag))?"Present":"MISSING")+"\n\n2. For each of the Five Point Check criteria, assess whether sufficient evidence exists to make a determination\n3. Identify specific evidence gaps that could weaken the claim\n4. Rate overall evidence sufficiency as Strong/Moderate/Weak/Insufficient\n5. Recommend specific documents or information to obtain\n\nClaim: "+c.worker+" vs "+c.employer+", "+c.injuryType+", DOI: "+c.injuryDate},
-
-{id:"case_narrative",category:"Assessment",title:"Case Narrative",desc:"Generate a plain-English narrative of the entire case from start to present.",icon:"CN",color:"#3B5EC0",prompt:c=>"Generate a comprehensive case narrative for this claim in plain English suitable for presenting to a tribunal, supervisor, or client. Include:\n\n1. INTRODUCTION: Worker, employer, date of injury, nature of injury\n2. INCIDENT: What happened (based on description: "+(c.description||"not provided")+")\n3. MEDICAL HISTORY: Documents on file, treatments, diagnoses\n4. CLAIM TIMELINE: Key events from filing to current status ("+stageOf(c.stage).label+")\n5. CURRENT STATUS: Where the claim stands, what has been determined\n6. OUTSTANDING ISSUES: What remains unresolved\n\nWrite in a professional, objective tone. Use dates where available. This narrative should be suitable for formal proceedings."},
-
-{id:"decision_template",category:"Adjudication",title:"Five-Point Decision Template",desc:"Structured walkthrough of each entitlement criterion for adjudicators.",icon:"DT",color:"#6C5CE7",prompt:c=>"Generate a formal Five-Point Check decision template for this claim. For each of the five criteria, provide:\n\n**POINT 1 - Personal injury by accident / Disease**\n- Evidence supporting: [list]\n- Evidence against: [list]\n- Analysis: [reasoning]\n- Determination: Satisfied / Not Satisfied / Insufficient Evidence\n\n**POINT 2 - Arising out of employment**\n- Evidence supporting: [list]\n- Evidence against: [list]\n- Analysis: [reasoning applying OPM 15-02]\n- Determination: Satisfied / Not Satisfied / Insufficient Evidence\n\n**POINT 3 - In the course of employment**\n(same structure)\n\n**POINT 4 - Disability**\n(same structure)\n\n**POINT 5 - Active employer account**\n(same structure)\n\n**OVERALL DETERMINATION**: Allow / Deny / Further Investigation Required\n**POLICY REFERENCES**: List all OPM sections applied\n**BENEFIT OF DOUBT**: Was OPM 11-01-13 applied? Why or why not?\n\nBase analysis on: "+c.injuryType+", worker: "+c.worker+", employer: "+c.employer+", documents: "+((c.documents||[]).map(d=>d.tag).join(", ")||"none")},
-
-{id:"appeal_brief",category:"Legal",title:"Appeal Brief Builder",desc:"Generate a structured appeal brief with OPM arguments for WSIAT.",icon:"AB",color:"#0071E3",prompt:c=>"Generate a comprehensive appeal brief for WSIAT for this denied or disputed claim. Structure as follows:\n\n**APPEAL BRIEF**\n**Re: "+c.claimNumber+" - "+c.worker+" v. WSIB**\n\n1. INTRODUCTION AND OVERVIEW\n2. STATEMENT OF FACTS\n- Worker: "+c.worker+"\n- Employer: "+c.employer+"\n- Date of Injury: "+c.injuryDate+"\n- Nature of Injury: "+c.injuryType+"\n- Description: "+(c.description||"N/A")+"\n3. PROCEDURAL HISTORY (claim filed, initial decision, objection)\n4. ISSUES ON APPEAL\n5. EVIDENCE SUMMARY\n- Documents on file: "+((c.documents||[]).map(d=>d.name+" ["+d.tag+"]").join("; ")||"none")+"\n6. LEGAL ARGUMENT\n- Apply Five Point Check with OPM policy citations\n- Address each criterion with supporting evidence\n- Apply Benefit of Doubt (OPM 11-01-13)\n- Apply Merits and Justice (OPM 11-01-03)\n7. REQUESTED RELIEF\n\nFormat as a professional legal brief suitable for WSIAT submission."},
-
-{id:"opposing_args",category:"Legal",title:"Opposing Arguments",desc:"Anticipate what the other side might argue and prepare rebuttals.",icon:"OA",color:"#F57C00",prompt:c=>"For this claim ("+c.injuryType+", "+c.worker+" vs "+c.employer+"), anticipate the opposing arguments that might be raised and prepare rebuttals:\n\n1. If representing the WORKER, what will the WSIB/employer likely argue?\n2. If representing the EMPLOYER, what will the worker/their representative likely argue?\n\nFor each anticipated argument:\n- State the argument clearly\n- Cite the OPM policy they would rely on\n- Provide a specific rebuttal with counter-evidence and alternative OPM references\n- Rate the strength of their argument (Strong/Moderate/Weak)\n\nAlso identify:\n- The single biggest vulnerability in this claim\n- The strongest argument for allowance\n- Key questions that a WSIAT panel might ask\n\nDocuments on file: "+((c.documents||[]).map(d=>d.tag).join(", ")||"none")+"\nDescription: "+(c.description||"N/A")},
-
-{id:"medical_chrono",category:"Medical",title:"Medical Chronology",desc:"Build a chronological timeline of all medical events from the claim.",icon:"MC",color:"#28A745",prompt:c=>"Generate a detailed medical chronology for this claim. Using all available information, create a date-ordered timeline of:\n\n1. Date of injury: "+c.injuryDate+"\n2. Initial medical treatment (based on Form 8 and medical records)\n3. All diagnostic tests (imaging, blood work, specialist referrals)\n4. All treatment interventions (medications, physiotherapy, surgery)\n5. Functional abilities assessments\n6. Return-to-work attempts and outcomes\n7. Current medical status\n\nFor each entry include: DATE | PROVIDER | EVENT TYPE | DETAILS | SIGNIFICANCE\n\nDocuments on file: "+((c.documents||[]).map(d=>d.name+" ["+d.tag+"]").join("; ")||"none")+"\n\nIf documents are insufficient, note what medical records should be obtained and from whom. Providers tracked: "+((c.providers||[]).map(p=>p.name+" ("+p.type+")").join(", ")||"none")},
-
-{id:"wsiat_search",category:"Legal",title:"WSIAT Precedent Search",desc:"Search for relevant WSIAT decisions and precedents for this case.",icon:"WS",color:"#251A5E",prompt:c=>"Search your knowledge of WSIAT decisions and WSIB appeal outcomes to find relevant precedents for this claim:\n\nInjury Type: "+c.injuryType+"\nDescription: "+(c.description||"N/A")+"\nWorker: "+c.worker+"\nEmployer: "+c.employer+"\n\nProvide:\n1. SIMILAR CASES: List 3-5 WSIAT decisions or appeal outcomes involving similar injury types, circumstances, or legal issues\n2. For each precedent:\n   - Case reference or decision number (if known)\n   - Brief facts\n   - Key legal issue\n   - Outcome (allowed/denied)\n   - Relevant OPM policies applied\n   - How it relates to the current claim\n3. PATTERN ANALYSIS: What do the precedents suggest about the likely outcome?\n4. DISTINGUISHING FACTORS: What makes this case different from the precedents?\n5. RECOMMENDED STRATEGY: Based on precedents, what approach is most likely to succeed?"},
-
-{id:"lost_time_class",category:"Adjudication",title:"Lost Time Classification",desc:"Auto-classify as lost time or no lost time and recommend fast-track eligibility.",icon:"LT",color:"#00C7BE",prompt:c=>"Classify this claim and recommend processing pathway:\n\n1. CLASSIFICATION:\n- Lost Time Claim or No Lost Time Claim?\n- Basis for classification\n\n2. COMPLEXITY ASSESSMENT:\n- Simple (straightforward, no dispute, clear medical evidence)\n- Moderate (some complexity, may need additional evidence)\n- Complex (disputed, multiple injuries, pre-existing conditions, mental health)\n\n3. FAST-TRACK ELIGIBILITY:\n- Can this claim be fast-tracked for immediate allowance? Yes/No\n- Requirements for fast-track: [list what would need to be confirmed]\n\n4. ESTIMATED PROCESSING TIMELINE:\n- Expected time to initial decision\n- Key milestones\n\n5. COST ESTIMATE:\n- Estimated total claim cost range based on injury type and classification\n\nBased on: "+c.injuryType+", "+c.worker+", DOI: "+c.injuryDate+"\nDocuments: "+((c.documents||[]).map(d=>d.tag).join(", ")||"none")+"\nDescription: "+(c.description||"N/A")},
-
-{id:"opm_reference",category:"Reference",title:"OPM Policy Lookup",desc:"Get the relevant OPM sections for this injury type with full explanations.",icon:"OP",color:"#5856D6",prompt:c=>"Provide a comprehensive OPM (Operational Policy Manual) policy reference guide specific to this claim:\n\nInjury Type: "+c.injuryType+"\n\n1. PRIMARY POLICIES:\n- List all OPM sections directly applicable to this injury type\n- For each: section number, title, key provisions, and how they apply\n\n2. ENTITLEMENT POLICIES:\n- OPM 11-01-01 (Five Point Check)\n- OPM 11-01-02 (Decision-Making)\n- OPM 11-01-03 (Merits and Justice)\n- OPM 11-01-13 (Benefit of Doubt)\n- Explain how each applies to this specific case\n\n3. INJURY-SPECIFIC POLICIES:\n- OPM Chapter 15 sections specific to "+c.injuryType+"\n- Any presumptive coverage provisions (e.g., PTSD for first responders under 15-03-13)\n\n4. BENEFIT POLICIES:\n- Applicable LOE calculation rules (Chapter 18)\n- NEL assessment criteria\n- RTW obligations\n\n5. KEY DATES AND TIMELINES:\n- Filing deadlines\n- Appeal windows\n- Review periods"}
-];
 /* ═══════════════════════════════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════════════════════════════ */
@@ -490,9 +166,17 @@ const nav=v=>{setView(v)};
 const changeStage=sid=>{const c={...active,stage:sid,timeline:[...(active.timeline||[]),{date:new Date().toISOString(),type:"stage",note:`Status → ${stageOf(sid).label}`}]};saveClaim(c);setModal(null)};
 const addNote=()=>{if(!noteIn.trim())return;const c={...active,notes:[...(active.notes||[]),{date:new Date().toISOString(),text:noteIn.trim()}],timeline:[...(active.timeline||[]),{date:new Date().toISOString(),type:"note",note:noteIn.trim()}]};saveClaim(c);setNoteIn("")};
 const delClaim=id=>{setClaims(p=>{const next=p.filter(c=>c.id!==id);persistClaims(user.email,next);return next});if(active?.id===id){setActive(null);setView("claims")}};
-const addFiles=useCallback(e=>{const n=Array.from(e.target.files);setFiles(p=>[...p,...n]);n.forEach(f=>{const r=new FileReader();r.onload=ev=>setFc(p=>({...p,[f.name]:ev.target.result}));r.readAsText(f)});e.target.value=""},[]);
+const addFiles=useCallback(async(e)=>{const n=Array.from(e.target.files);setFiles(p=>[...p,...n]);
+/* Server-side extraction for PDFs, client-side for text */
+const pdfFiles=n.filter(f=>f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf"));
+const textFiles=n.filter(f=>!f.type.includes("pdf")&&!f.name.toLowerCase().endsWith(".pdf"));
+/* Extract text files client-side */
+textFiles.forEach(f=>{const r=new FileReader();r.onload=ev=>setFc(p=>({...p,[f.name]:ev.target.result}));r.readAsText(f)});
+/* Extract PDFs server-side */
+if(pdfFiles.length>0){try{const form=new FormData();pdfFiles.forEach(f=>form.append("files",f));const res=await fetch("/api/upload",{method:"POST",body:form});const data=await res.json();if(data.files){Object.entries(data.files).forEach(([name,info])=>{setFc(p=>({...p,[name]:info.text||"[extraction failed]"}))})}}catch(err){pdfFiles.forEach(f=>setFc(p=>({...p,[f.name]:`[PDF extraction failed: ${err.message}]`})))}}
+e.target.value=""},[]);
 const rmFile=n=>{setFiles(p=>p.filter(f=>f.name!==n));setFc(p=>{const x={...p};delete x[n];return x})};
-const handleAction=(a)=>{if(a.action==="upload"){fRef.current?.click();return}if(a.action==="analyze"){openChat(active,"Run a full adjudication analysis on this claim. Apply the Five Point Check, evaluate medical evidence, and give me a ruling prediction.");return}if(a.action.startsWith("stage:")){changeStage(a.action.split(":")[1]);return}if(a.action.startsWith("prompt:")){openChat(active,a.action.replace("prompt:",""));return}};
+const handleAction=(a)=>{if(a.action==="upload"){fRef.current?.click();return}if(a.action==="analyze"){openChat(active,"Run a full adjudication analysis on this claim. Apply the Five Point Check, evaluate medical evidence, and give me a ruling prediction.");return}if(a.action==="export"){exportCasePdf(active);return}if(a.action.startsWith("stage:")){changeStage(a.action.split(":")[1]);return}if(a.action.startsWith("prompt:")){openChat(active,a.action.replace("prompt:",""));return}};
 
 const send=async(override)=>{const text=override||input.trim();if(!text&&files.length===0)return;setInput("");if(taRef.current)taRef.current.style.height="auto";let content=text;const af=[...files];if(af.length>0&&Object.keys(fc).length>0)content=`${text||"Please analyze these claim documents."}\n\n[UPLOADED DOCUMENTS]\n${Object.entries(fc).map(([n,c])=>`── ${n} ──\n${c}`).join("\n\n────\n\n")}`;if(active)content=`[CLAIM CONTEXT]\nClaim #: ${active.claimNumber}\nWorker: ${active.worker}\nEmployer: ${active.employer}\nInjury Date: ${active.injuryDate}\nType: ${active.injuryType}\nStatus: ${stageOf(active.stage).label}\nDescription: ${active.description||"N/A"}\nDays since injury: ${active.injuryDate!=="—"?daysAgo(active.injuryDate):"unknown"}\nDocuments on file: ${active.documents?.length||0} (${(active.documents||[]).map(d=>d.tag).filter((v,i,a)=>a.indexOf(v)===i).join(", ")||"none"})\nPrevious analyses: ${active.analyses?.length||0}\n\n${content}`;const um={role:"user",display:text||`Uploaded ${af.length} document${af.length>1?"s":""}`,content,files:af.map(f=>f.name),ts:new Date().toISOString()};const newMsgs=[...msgs,um];setMsgs(newMsgs);setFiles([]);setFc({});setLoading(true);
 if(active&&af.length>0){const c={...active};c.documents=[...(c.documents||[]),...af.map(f=>({name:f.name,tag:guessDocType(f.name),addedAt:new Date().toISOString()}))];c.timeline=[...(c.timeline||[]),...af.map(f=>({date:new Date().toISOString(),type:"document",note:`Uploaded: ${f.name}`}))];saveClaim(c)}
