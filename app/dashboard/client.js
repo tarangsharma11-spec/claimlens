@@ -158,15 +158,14 @@ function pushUndo(label,rollback){setUndoStack(p=>[{label,rollback,ts:Date.now()
 const fRef=useRef(null);const endRef=useRef(null);const taRef=useRef(null);
 
 useEffect(()=>{const handler=(e)=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT")return;if(e.key==="n"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();setModal("new")}if(e.key==="s"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();nav("claims")}if(e.key==="a"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();setActive(null);setMsgs([]);nav("chat")}if(e.key==="h"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();nav("home")}if(e.key==="Escape"){setModal(null);setShowCalc(false);setShowAnalytics(false);setShowTemplates(false);setCmdOpen(false);setQuickNote(p=>({...p,open:false}))}if((e.metaKey||e.ctrlKey)&&e.key==="k"){e.preventDefault();setCmdOpen(true)}if(e.key==="?"&&!e.metaKey&&!e.ctrlKey){setShowShortcuts(true)}};window.addEventListener("keydown",handler);return()=>window.removeEventListener("keydown",handler)},[]);
-useEffect(()=>{async function fetchClaims(){try{const res=await fetch("/api/org/claims");if(res.ok){const data=await res.json();setClaims(data.claims||[]);}else{/* Fallback to localStorage if org not set up yet */const cl=loadClaims(user.email);setClaims(cl);}}catch{const cl=loadClaims(user.email);setClaims(cl);}}fetchClaims();
-/* Check for overdue diary items and auto-generate reminder notifications */
-cl.forEach(claim=>{(claim.diary||[]).forEach(d=>{if(!d.sent&&new Date(d.date)<new Date()){
+useEffect(()=>{async function fetchClaims(){try{const res=await fetch("/api/org/claims");if(res.ok){const data=await res.json();const cl=data.claims||[];setClaims(cl);return cl}else{const cl=loadClaims(user.email);setClaims(cl);return cl}}catch{const cl=loadClaims(user.email);setClaims(cl);return cl}}fetchClaims().then(cl=>{
+/* Check for overdue diary items */
+(cl||[]).forEach(claim=>{(claim.diary||[]).forEach(d=>{if(!d.sent&&new Date(d.date)<new Date()){
 const key="diary_reminded_"+claim.id+"_"+d.id;
 if(!localStorage.getItem(key)){
 localStorage.setItem(key,"1");
-/* Would trigger email via /api/email in production */
 console.log("REMINDER DUE:",claim.claimNumber,d.note,d.date);
-}}})});if(cl.length===0&&!localStorage.getItem("ca_onboarded_"+user.email))setShowOnboarding(true)},[user.email]);
+}}})});if((cl||[]).length===0&&!localStorage.getItem("ca_onboarded_"+user.email))setShowOnboarding(true)})},[user.email]);
 /* Claims are now persisted to Vercel Postgres via API — no localStorage auto-save */
 useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"})},[msgs,loading]);
 useEffect(()=>{if(!timer.running)return;const iv=setInterval(()=>setTimer(p=>({...p,tick:Date.now()})),1000);return()=>clearInterval(iv)},[timer.running]);

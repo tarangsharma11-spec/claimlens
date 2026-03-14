@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import {
   createOrg, getOrg, updateOrg,
   addMember, getMembers, getMembership, updateMember, removeMember, getMemberCount,
@@ -12,7 +13,7 @@ import {
  * PATCH /api/org — Update org settings (admin only)
  */
 export async function GET(request) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -30,7 +31,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -76,7 +77,7 @@ export async function POST(request) {
 }
 
 export async function PATCH(request) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
