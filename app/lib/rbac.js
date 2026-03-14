@@ -34,6 +34,7 @@ export const FEATURES = {
   templates:   { label: "Templates",      roles: ["*"], category: "core" },
   analytics:   { label: "Analytics",      roles: ["*"], category: "core" },
   glossary:    { label: "Glossary",       roles: ["*"], category: "core" },
+  team:        { label: "Team",           roles: ["*"], category: "core" },
 
   // === LAWYER-SPECIFIC ===
   intake:      { label: "Intake Screener",     roles: ["lawyer", "admin"],      category: "lawyer" },
