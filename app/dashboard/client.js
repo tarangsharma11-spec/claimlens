@@ -208,6 +208,8 @@ ruling==="Deny"?{id:Date.now()+2,text:"Draft denial letter with appeal rights no
 c.timeline=[...(c.timeline||[]),{date:new Date().toISOString(),type:"note",note:"Auto-generated 4 follow-up tasks from AI analysis"}];c.timeline=[...(c.timeline||[]),{date:new Date().toISOString(),type:"analysis",note:`AI analysis — Ruling: ${ruling}`}];if(c.stage==="new"){c.stage="review";c.timeline.push({date:new Date().toISOString(),type:"stage",note:"Status → Under Review"})}}
 /* Save ALL AI tool outputs to analyses + timeline for reference */
 else{const toolMatch=AI_TOOLS.find(t=>text.toLowerCase().includes(t.title.toLowerCase().split(" ")[0]));const toolTitle=toolMatch?.title||(text.length>60?"AI Analysis":"AI Response");c.analyses=[...(c.analyses||[]),{date:new Date().toISOString(),tool:toolMatch?.id||"chat",title:toolTitle,snippet:reply.slice(0,300),fullText:reply}];c.timeline=[...(c.timeline||[]),{date:new Date().toISOString(),type:"ai_tool",note:`${toolTitle} completed`,tool:toolMatch?.id||"chat"}]}
+/* Auto-update description from AI if empty or very short */
+if((!c.description||c.description.length<20)&&reply.length>100){const descMatch=reply.match(/(?:incident|injury|description|summary|overview)[:\s]*([^.!?]+[.!?](?:\s+[^.!?]+[.!?]){0,2})/i);if(descMatch){c.description=descMatch[1].trim().slice(0,500);c.timeline=[...(c.timeline||[]),{date:new Date().toISOString(),type:"note",note:"Incident description auto-populated from AI analysis",author:"AI"}]}}
 saveClaim(c)}}catch(err){const msg=err.message||"AI request failed";setMsgs(p=>[...p,{role:"assistant",content:`**Error:** ${msg}`,ts:new Date().toISOString()}]);if(msg.includes("limit reached"))showToast(msg,"error")}finally{setLoading(false)}};
 
 const scenarios=[{l:"Back injury claim",t:"A warehouse worker injured their lower back lifting a 50lb box on March 3, 2026. Reported same day, Form 7 filed March 5. Doctor diagnosed lumbar strain (M54.5), recommended 4 weeks off. No pre-existing conditions. What would WSIB rule?"},{l:"Disputed late reporting",t:"A construction worker reports a shoulder injury 3 weeks after the alleged incident. No witnesses. Employer is disputing. How would WSIB approach this?"},{l:"Pre-existing aggravation",t:"Worker has documented degenerative disc disease at L4-L5. Claims a workplace slip aggravated this, now needs surgery. How does the thin skull principle apply?"},{l:"First responder PTSD",t:"A paramedic with 12 years of service is filing a PTSD claim after a fatal MVA involving children. What does OPM 15-03-13 say about presumptive coverage?"}];
@@ -521,6 +523,20 @@ return(<div key={gi}>
 <div style={{display:"flex",gap:2,padding:3,background:"var(--g100)",borderRadius:12,marginBottom:16,overflowX:"auto",scrollbarWidth:"none"}}>{[{id:"overview",label:"Overview"},{id:"documents",label:`Docs (${active.documents?.length||0})`},{id:"comms",label:"Activity"},{id:"appeal",label:"Appeal"},{id:"tasks",label:"Tasks"},{id:"providers",label:"Providers"},{id:"valuation",label:"Value"},{id:"diary",label:"Diary"},{id:"payments",label:"Payments"},{id:"modified",label:"Modified"},{id:"tools",label:"AI Tools"}].map(t=><button key={t.id} onClick={()=>setDetailTab(t.id)} style={{flex:"0 0 auto",padding:"7px 12px",borderRadius:8,border:"none",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",background:detailTab===t.id?"#fff":"transparent",color:detailTab===t.id?"var(--g900)":"var(--g500)",boxShadow:detailTab===t.id?"0 1px 3px rgba(0,0,0,.06)":"none"}}>{t.label}</button>)}</div>
 
 {detailTab==="overview"&&<>
+{/* INCIDENT DESCRIPTION — editable */}
+<div style={{marginBottom:14,padding:"18px 20px",background:"#fff",borderRadius:16,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<div style={{fontSize:11,fontWeight:700,color:"var(--g500)",textTransform:"uppercase",letterSpacing:1}}>Incident Description</div>
+{inlineEdit!=="description"&&<button onClick={()=>{setInlineEdit("description");setInlineVal(active.description||"")}} style={{fontSize:11,fontWeight:600,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",padding:0}}>Edit</button>}
+</div>
+{inlineEdit==="description"?<div>
+<textarea value={inlineVal} onChange={e=>setInlineVal(e.target.value)} rows={4} style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1px solid var(--card-border)",fontSize:13,outline:"none",background:"var(--g50)",fontFamily:"inherit",resize:"vertical",lineHeight:1.6}} autoFocus/>
+<div style={{display:"flex",gap:6,marginTop:8,justifyContent:"flex-end"}}>
+<button onClick={()=>setInlineEdit(null)} style={{padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:600,border:"1px solid var(--g300)",background:"#fff",color:"var(--g600)",cursor:"pointer"}}>Cancel</button>
+<button onClick={()=>{const cl={...active,description:inlineVal.trim(),timeline:[...(active.timeline||[]),{date:new Date().toISOString(),type:"note",note:"Incident description updated",author:user?.name||user?.email}]};saveClaim(cl);setInlineEdit(null)}} style={{padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:600,border:"none",background:"var(--blue)",color:"#fff",cursor:"pointer"}}>Save</button>
+</div>
+</div>:<div style={{fontSize:13,color:active.description?"var(--g700)":"var(--g400)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{active.description||"No description yet. Click Edit to add one, or upload documents and run an AI analysis to auto-populate."}</div>}
+</div>
 {/* WORKFLOW PROGRESS */}
 {(()=>{const wf=getWorkflowStatus(active);const current=wf.steps[wf.currentIdx];return(<div style={{marginBottom:14}}>
 <div style={{padding:"18px 20px",background:"#fff",borderRadius:16,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)"}}>
