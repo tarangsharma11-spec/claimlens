@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
   const router = useRouter();
   const authRef = useRef(null);
 
@@ -26,10 +27,40 @@ export default function LoginPage() {
         @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
         *{box-sizing:border-box;margin:0;padding:0}input,button{font-family:inherit}::placeholder{color:#AEAEB2}
         .sec{max-width:1120px;margin:0 auto;padding:0 28px}
-        @media(max-width:900px){.hero-grid{flex-direction:column!important;text-align:center}.hero-grid>div:first-child{align-items:center!important}.feat-grid{grid-template-columns:1fr!important}.journey-grid{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}.journey-grid>div>div:first-child{display:none}.who-grid{grid-template-columns:1fr!important}.sec{padding-left:20px!important;padding-right:20px!important}.auth-split{flex-direction:column!important}.auth-left{display:none!important}}
-        @media(max-width:600px){.feat-grid{grid-template-columns:1fr!important;gap:10px!important}.who-grid{grid-template-columns:1fr!important}.hero-grid h1{font-size:28px!important}}
-        @media(max-width:480px){nav{padding:12px 16px!important}nav span{font-size:16px!important}}
-        @media(max-width:600px){.feat-grid{grid-template-columns:1fr!important}.stats-grid{grid-template-columns:1fr 1fr!important}}
+        .nav-links{display:flex;gap:24px;align-items:center}
+        .nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:8px;color:#1D1D1F}
+        .nav-mobile-menu{display:none}
+        @media(max-width:900px){
+          .hero-grid{flex-direction:column!important;text-align:center}
+          .hero-grid>div:first-child{align-items:center!important}
+          .hero-grid>div:last-child{width:100%!important;max-width:400px;margin:0 auto}
+          .feat-grid{grid-template-columns:1fr 1fr!important}
+          .journey-grid{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
+          .journey-grid>div>div:first-child{display:none}
+          .who-grid{grid-template-columns:1fr!important}
+          .sec{padding-left:20px!important;padding-right:20px!important}
+          .auth-split{flex-direction:column!important}
+          .auth-left{display:none!important}
+          .nav-links{display:none!important}
+          .nav-toggle{display:flex!important}
+          .nav-mobile-menu.open{display:flex!important;flex-direction:column;position:absolute;top:100%;left:0;right:0;background:rgba(250,251,252,.98);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.06);padding:12px 20px 20px;gap:4px;z-index:99}
+          .nav-mobile-menu.open a,.nav-mobile-menu.open span,.nav-mobile-menu.open button{display:block;padding:12px 0;font-size:15px!important;text-align:left;width:100%}
+        }
+        @media(max-width:600px){
+          .feat-grid{grid-template-columns:1fr!important;gap:10px!important}
+          .who-grid{grid-template-columns:1fr!important}
+          .hero-grid h1{font-size:28px!important}
+          .stats-grid{grid-template-columns:1fr 1fr!important}
+          .journey-grid{grid-template-columns:repeat(3,1fr)!important;gap:6px!important}
+          .journey-grid>div:nth-child(n+5){display:none}
+        }
+        @media(max-width:480px){
+          nav{padding:12px 16px!important}
+          nav span{font-size:16px!important}
+          .hero-grid h1{font-size:24px!important}
+          .journey-grid{grid-template-columns:1fr 1fr!important}
+          .auth-card-wrap{width:100%!important;min-width:0!important;flex-shrink:1!important}
+        }
       `}</style>
 
       {/* NAV */}
@@ -50,7 +81,7 @@ export default function LoginPage() {
             </div>
             <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: "#1D1D1F" }}>CaseAssist</span>
           </div>
-          <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+          <div className="nav-links">
             <a href="/pricing" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Pricing</a>
             <a href="/blog" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Blog</a>
             <a href="/demo" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Request Demo</a>
@@ -58,6 +89,22 @@ export default function LoginPage() {
             <span onClick={() => scrollTo("journey")} style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", cursor: "pointer" }}>How It Works</span>
             <span onClick={() => scrollTo("who")} style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", cursor: "pointer" }}>Who For</span>
             <button onClick={() => { setTab("login"); scrollTo("auth"); }} style={{ padding: "8px 18px", borderRadius: 980, fontSize: 13, fontWeight: 600, border: "none", background: "#0071E3", color: "#fff", cursor: "pointer" }}>Sign In</button>
+          </div>
+          <button className="nav-toggle" onClick={() => setMobileNav(!mobileNav)} aria-label="Menu">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              {mobileNav
+                ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                : <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              }
+            </svg>
+          </button>
+          <div className={`nav-mobile-menu ${mobileNav ? "open" : ""}`}>
+            <a href="/pricing" onClick={() => setMobileNav(false)} style={{ fontSize: 14, fontWeight: 500, color: "#3E3F44", textDecoration: "none" }}>Pricing</a>
+            <a href="/blog" onClick={() => setMobileNav(false)} style={{ fontSize: 14, fontWeight: 500, color: "#3E3F44", textDecoration: "none" }}>Blog</a>
+            <a href="/demo" onClick={() => setMobileNav(false)} style={{ fontSize: 14, fontWeight: 500, color: "#3E3F44", textDecoration: "none" }}>Request Demo</a>
+            <span onClick={() => { scrollTo("features"); setMobileNav(false); }} style={{ fontSize: 14, fontWeight: 500, color: "#3E3F44", cursor: "pointer" }}>Features</span>
+            <span onClick={() => { scrollTo("journey"); setMobileNav(false); }} style={{ fontSize: 14, fontWeight: 500, color: "#3E3F44", cursor: "pointer" }}>How It Works</span>
+            <button onClick={() => { setTab("login"); scrollTo("auth"); setMobileNav(false); }} style={{ padding: "12px 24px", borderRadius: 980, fontSize: 14, fontWeight: 600, border: "none", background: "#0071E3", color: "#fff", cursor: "pointer", marginTop: 8, width: "100%" }}>Sign In</button>
           </div>
         </div>
       </nav>
@@ -77,7 +124,7 @@ export default function LoginPage() {
               <p style={{ fontSize: 18, color: "#6E6E73", lineHeight: 1.65, maxWidth: 480, marginBottom: 32 }}>
                 Analyze workers' compensation claims against the WSIB OPM. Get AI ruling predictions, guided workflow tracking, email integration, and smart risk alerts.
               </p>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
                 <button onClick={() => scrollTo("auth")} style={{ padding: "14px 32px", borderRadius: 980, fontSize: 16, fontWeight: 700, border: "none", background: "#0071E3", color: "#fff", cursor: "pointer", boxShadow: "0 4px 16px rgba(0,113,227,.3)" }}>Start analyzing claims</button>
                 <button onClick={() => scrollTo("features")} style={{ padding: "14px 32px", borderRadius: 980, fontSize: 16, fontWeight: 600, border: "1px solid #D2D2D7", background: "#fff", color: "#1D1D1F", cursor: "pointer" }}>See how it works</button>
               </div>
@@ -233,7 +280,7 @@ export default function LoginPage() {
               <p style={{ fontSize: 15, color: "#6E6E73", lineHeight: 1.65, marginBottom: 24 }}>Sign in or create an account. All you need is an access code from your administrator.</p>
               {["\u2713 AI-powered Five Point Check", "\u2713 Deadline tracking & notifications", "\u2713 Document intelligence & auto-tagging", "\u2713 Three-point contact tracker & cost forecasting", "\u2713 Export cases as JSON or CSV"].map((x, i) => (<div key={i} style={{ fontSize: 14, color: "#48484A", fontWeight: 500, marginBottom: 8 }}>{x}</div>))}
             </div>
-            <div style={{ width: 400, flexShrink: 0 }}>
+            <div className="auth-card-wrap" style={{ width: 400, maxWidth: "100%", flexShrink: 0 }}>
               <div style={{ display: "flex", gap: 2, padding: 3, background: "#E8E8ED", borderRadius: 12, marginBottom: 20 }}>
                 {["login", "signup"].map(t => (<button key={t} onClick={() => { setTab(t); setError(""); }} style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", background: tab === t ? "#fff" : "transparent", color: tab === t ? "#1D1D1F" : "#86868B", boxShadow: tab === t ? "0 1px 3px rgba(0,0,0,.06)" : "none" }}>{t === "login" ? "Sign In" : "Create Account"}</button>))}
               </div>

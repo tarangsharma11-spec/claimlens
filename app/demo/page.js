@@ -7,6 +7,7 @@ export default function DemoPage() {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
 
   const update = (field, val) => setForm(prev => ({ ...prev, [field]: val }));
 
@@ -43,10 +44,25 @@ export default function DemoPage() {
         input:focus,select:focus,textarea:focus{outline:none;border-color:#3B5EC0!important;box-shadow:0 0 0 3px rgba(59,94,192,.1)}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         .fade-up{animation:fadeUp .5s ease both}
+        .demo-nav-links{display:flex;gap:16px;align-items:center}
+        .demo-nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:8px;color:#1D1D1F}
+        .demo-mobile-menu{display:none}
+        @media(max-width:900px){
+          .demo-hero-grid{grid-template-columns:1fr!important;gap:32px!important}
+          .demo-nav-links{display:none!important}
+          .demo-nav-toggle{display:flex!important}
+          .demo-mobile-menu.open{display:flex!important;flex-direction:column;position:absolute;top:100%;left:0;right:0;background:rgba(248,249,251,.98);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.06);padding:12px 20px 20px;gap:4px;z-index:99}
+          .demo-mobile-menu.open a{display:block;padding:12px 0;font-size:15px!important}
+          .demo-what-grid{grid-template-columns:1fr!important}
+        }
+        @media(max-width:600px){
+          .demo-hero-grid{gap:24px!important}
+          .demo-hero-grid h1{font-size:28px!important}
+        }
       `}</style>
 
       {/* NAV */}
-      <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 32px", maxWidth: 1200, margin: "0 auto" }}>
+      <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 32px", maxWidth: 1200, margin: "0 auto", position: "relative" }}>
         <Link href="/login" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <div style={{ width: 32, height: 32 }}>
             <svg width="32" height="32" viewBox="0 0 80 90" fill="none">
@@ -62,15 +78,27 @@ export default function DemoPage() {
           </div>
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: "#1D1D1F" }}>CaseAssist</span>
         </Link>
-        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+        <div className="demo-nav-links">
           <Link href="/pricing" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Pricing</Link>
           <Link href="/login" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Sign In</Link>
+        </div>
+        <button className="demo-nav-toggle" onClick={() => setMobileNav(!mobileNav)} aria-label="Menu">
+          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            {mobileNav
+              ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              : <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            }
+          </svg>
+        </button>
+        <div className={`demo-mobile-menu ${mobileNav ? "open" : ""}`}>
+          <Link href="/pricing" onClick={() => setMobileNav(false)} style={{ fontSize: 14, fontWeight: 500, color: "#3E3F44", textDecoration: "none" }}>Pricing</Link>
+          <Link href="/login" onClick={() => setMobileNav(false)} style={{ fontSize: 14, fontWeight: 500, color: "#3E3F44", textDecoration: "none" }}>Sign In</Link>
         </div>
       </nav>
 
       {/* HERO SECTION */}
       <section style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 80px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "start" }}>
+        <div className="demo-hero-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "start" }}>
 
           {/* LEFT — Value Prop */}
           <div style={{ paddingTop: 20 }}>
@@ -250,7 +278,7 @@ export default function DemoPage() {
           <div style={{ fontSize: 12, fontWeight: 700, color: "#3B5EC0", textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>What to Expect</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.8, color: "#1D1D1F" }}>Your personalized demo includes</h2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+        <div className="demo-what-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {[
             { num: "1", title: "Platform Walkthrough", desc: "See the full dashboard, case management workflow, and Kanban board in action with real sample data.", time: "15 min" },
             { num: "2", title: "AI Analysis Demo", desc: "Watch the Five Point Check analyze a sample claim in real-time, with OPM policy citations and ruling prediction.", time: "10 min" },

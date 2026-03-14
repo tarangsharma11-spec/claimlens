@@ -84,6 +84,7 @@ export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
   const [loading, setLoading] = useState(null);
   const [openFaq, setOpenFaq] = useState(null);
+  const [mobileNav, setMobileNav] = useState(false);
 
   async function handleCheckout(planId) {
     if (planId === "starter") {
@@ -128,10 +129,31 @@ export default function PricingPage() {
         *{margin:0;padding:0;box-sizing:border-box}
         .pricing-card{transition:transform .2s,box-shadow .2s}
         .pricing-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.1)}
+        .pricing-nav-links{display:flex;gap:16px;align-items:center}
+        .pricing-nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:8px;color:#1D1D1F}
+        .pricing-mobile-menu{display:none}
+        @media(max-width:900px){
+          .pricing-nav-links{display:none!important}
+          .pricing-nav-toggle{display:flex!important}
+          .pricing-mobile-menu.open{display:flex!important;flex-direction:column;position:absolute;top:100%;left:0;right:0;background:rgba(250,251,252,.98);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.06);padding:12px 20px 20px;gap:4px;z-index:99}
+          .pricing-mobile-menu.open a{display:block;padding:12px 0;font-size:15px!important}
+          .pricing-grid{grid-template-columns:1fr!important;max-width:400px!important;margin-left:auto!important;margin-right:auto!important}
+          .pricing-card:hover{transform:none!important}
+          .compare-table{overflow-x:auto!important;-webkit-overflow-scrolling:touch}
+          .compare-row{grid-template-columns:1fr 70px 70px 70px!important;font-size:12px!important;padding:8px 12px!important}
+          .cta-section h2{font-size:24px!important}
+        }
+        @media(max-width:600px){
+          .pricing-hero h1{font-size:28px!important}
+          .compare-row{grid-template-columns:1fr 60px 60px 60px!important;font-size:11px!important;padding:6px 10px!important}
+        }
+        @media(max-width:480px){
+          .pricing-hero h1{font-size:24px!important}
+        }
       `}</style>
 
       {/* NAV */}
-      <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 32px", maxWidth: 1200, margin: "0 auto" }}>
+      <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 32px", maxWidth: 1200, margin: "0 auto", position: "relative" }}>
         <Link href="/login" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <div style={{ width: 32, height: 32 }}>
             <svg width="32" height="32" viewBox="0 0 80 90" fill="none">
@@ -147,17 +169,30 @@ export default function PricingPage() {
           </div>
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: "#1D1D1F" }}>CaseAssist</span>
         </Link>
-        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+        <div className="pricing-nav-links">
           <Link href="/demo" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Request Demo</Link>
           <Link href="/login" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Sign In</Link>
           <Link href="/login" style={{ padding: "8px 20px", borderRadius: 100, fontSize: 13, fontWeight: 600, background: "#1D1D1F", color: "#fff", textDecoration: "none" }}>Get Started</Link>
+        </div>
+        <button className="pricing-nav-toggle" onClick={() => setMobileNav(!mobileNav)} aria-label="Menu">
+          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            {mobileNav
+              ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              : <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            }
+          </svg>
+        </button>
+        <div className={`pricing-mobile-menu ${mobileNav ? "open" : ""}`}>
+          <Link href="/demo" onClick={() => setMobileNav(false)} style={{ fontSize: 14, fontWeight: 500, color: "#3E3F44", textDecoration: "none" }}>Request Demo</Link>
+          <Link href="/login" onClick={() => setMobileNav(false)} style={{ fontSize: 14, fontWeight: 500, color: "#3E3F44", textDecoration: "none" }}>Sign In</Link>
+          <Link href="/login" onClick={() => setMobileNav(false)} style={{ display: "block", padding: "12px 24px", borderRadius: 100, fontSize: 14, fontWeight: 600, background: "#1D1D1F", color: "#fff", textDecoration: "none", textAlign: "center", marginTop: 8 }}>Get Started</Link>
         </div>
       </nav>
 
       {/* HERO */}
       <section style={{ textAlign: "center", padding: "60px 24px 20px" }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: "#3B5EC0", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Pricing</div>
-        <h1 style={{ fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 800, letterSpacing: -1.5, color: "#1D1D1F", marginBottom: 14 }}>
+        <h1 className="pricing-hero" style={{ fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 800, letterSpacing: -1.5, color: "#1D1D1F", marginBottom: 14 }}>
           Simple, transparent pricing
         </h1>
         <p style={{ fontSize: 16, color: "#6E6E73", maxWidth: 480, margin: "0 auto 28px" }}>
@@ -175,7 +210,7 @@ export default function PricingPage() {
       </section>
 
       {/* PRICING CARDS */}
-      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 60px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "start" }}>
+      <section className="pricing-grid" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 60px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "start" }}>
         {PLANS.map((plan) => (
           <div key={plan.id} className="pricing-card" style={{
             padding: "32px 28px",
@@ -246,7 +281,7 @@ export default function PricingPage() {
       {/* COMPARISON TABLE */}
       <section style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px 60px" }}>
         <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, textAlign: "center", marginBottom: 32 }}>Compare plans in detail</h2>
-        <div style={{ borderRadius: 16, border: "1px solid var(--card-border)", overflow: "hidden", background: "#fff" }}>
+        <div className="compare-table" style={{ borderRadius: 16, border: "1px solid var(--card-border)", overflow: "hidden", background: "#fff" }}>
           {[
             { feature: "Active cases", starter: "3", pro: "Unlimited", firm: "Unlimited" },
             { feature: "AI ruling predictions", starter: true, pro: true, firm: true },
@@ -268,7 +303,7 @@ export default function PricingPage() {
             { feature: "Custom branding", starter: false, pro: false, firm: true },
             { feature: "Support", starter: "Community", pro: "Priority email", firm: "Dedicated + SLA" },
           ].map((row, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 100px", padding: "10px 20px", fontSize: 13, borderBottom: i < 18 ? "1px solid var(--g100)" : "none", background: i % 2 === 0 ? "#fff" : "var(--g50)" }}>
+            <div key={i} className="compare-row" style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 100px", padding: "10px 20px", fontSize: 13, borderBottom: i < 18 ? "1px solid var(--g100)" : "none", background: i % 2 === 0 ? "#fff" : "var(--g50)" }}>
               <span style={{ fontWeight: 500, color: "var(--g700)" }}>{row.feature}</span>
               {["starter", "pro", "firm"].map((plan) => (
                 <span key={plan} style={{ textAlign: "center", color: row[plan] === true ? "#28A745" : row[plan] === false ? "var(--g300)" : "var(--g600)", fontWeight: 500 }}>
@@ -297,7 +332,7 @@ export default function PricingPage() {
       </section>
 
       {/* CTA */}
-      <section style={{ padding: "60px 24px", background: "linear-gradient(135deg, #1A1040 0%, #2E3580 50%, #3B5EC0 100%)", textAlign: "center" }}>
+      <section className="cta-section" style={{ padding: "60px 24px", background: "linear-gradient(135deg, #1A1040 0%, #2E3580 50%, #3B5EC0 100%)", textAlign: "center" }}>
         <h2 style={{ fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 800, color: "#fff", letterSpacing: -1, marginBottom: 14 }}>Ready to transform your claims workflow?</h2>
         <p style={{ fontSize: 15, color: "rgba(255,255,255,.7)", maxWidth: 440, margin: "0 auto 28px" }}>Join professionals across Ontario who use CaseAssist to adjudicate with confidence.</p>
         <Link href="/login" style={{ display: "inline-block", padding: "14px 32px", borderRadius: 100, fontSize: 14, fontWeight: 700, background: "#fff", color: "#251A5E", textDecoration: "none" }}>Start Free Trial</Link>
