@@ -269,7 +269,7 @@ export default function AdminPanel({ currentUser, onClose }) {
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#1D1D1F" }}>{p.label}</div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: p.color, marginTop: 2 }}>{p.price}</div>
                     <div style={{ fontSize: 11, color: "#86868B", marginTop: 4 }}>{p.seats} seat{p.seats !== 1 ? "s" : ""}</div>
-                    {key !== org?.plan && key !== "starter" && (
+                    {(()=>{const tiers=["starter","pro","firm"];const current=tiers.indexOf(org?.plan||"starter");const target=tiers.indexOf(key);return target>current})() && (
                       <button onClick={() => window.open("/pricing", "_blank")} style={{ marginTop: 8, padding: "6px 12px", borderRadius: 8, border: "1px solid " + p.color + "40", background: "transparent", color: p.color, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Upgrade</button>
                     )}
                   </div>
