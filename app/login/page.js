@@ -50,6 +50,7 @@ export default function LoginPage() {
           </div>
           <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
             <a href="/pricing" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Pricing</a>
+            <a href="/demo" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Request Demo</a>
             <span onClick={() => scrollTo("features")} style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", cursor: "pointer" }}>Features</span>
             <span onClick={() => scrollTo("journey")} style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", cursor: "pointer" }}>How It Works</span>
             <span onClick={() => scrollTo("who")} style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", cursor: "pointer" }}>Who For</span>

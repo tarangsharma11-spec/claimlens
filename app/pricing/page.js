@@ -148,6 +148,7 @@ export default function PricingPage() {
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: "#1D1D1F" }}>CaseAssist</span>
         </Link>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <Link href="/demo" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Request Demo</Link>
           <Link href="/login" style={{ fontSize: 13, fontWeight: 500, color: "#6E6E73", textDecoration: "none" }}>Sign In</Link>
           <Link href="/login" style={{ padding: "8px 20px", borderRadius: 100, fontSize: 13, fontWeight: 600, background: "#1D1D1F", color: "#fff", textDecoration: "none" }}>Get Started</Link>
         </div>
