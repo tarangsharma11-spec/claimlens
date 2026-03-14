@@ -26,7 +26,9 @@ export default function LoginPage() {
         @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
         *{box-sizing:border-box;margin:0;padding:0}input,button{font-family:inherit}::placeholder{color:#AEAEB2}
         .sec{max-width:1120px;margin:0 auto;padding:0 28px}
-        @media(max-width:900px){.hero-grid{flex-direction:column!important;text-align:center}.hero-grid>div:first-child{align-items:center!important}.feat-grid{grid-template-columns:1fr 1fr!important}.journey-grid{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}.journey-grid>div>div:first-child{display:none}.who-grid{grid-template-columns:1fr!important}.auth-split{flex-direction:column!important}.auth-left{display:none!important}}
+        @media(max-width:900px){.hero-grid{flex-direction:column!important;text-align:center}.hero-grid>div:first-child{align-items:center!important}.feat-grid{grid-template-columns:1fr!important}.journey-grid{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}.journey-grid>div>div:first-child{display:none}.who-grid{grid-template-columns:1fr!important}.sec{padding-left:20px!important;padding-right:20px!important}.auth-split{flex-direction:column!important}.auth-left{display:none!important}}
+        @media(max-width:600px){.feat-grid{grid-template-columns:1fr!important;gap:10px!important}.who-grid{grid-template-columns:1fr!important}.hero-grid h1{font-size:28px!important}}
+        @media(max-width:480px){nav{padding:12px 16px!important}nav span{font-size:16px!important}}
         @media(max-width:600px){.feat-grid{grid-template-columns:1fr!important}.stats-grid{grid-template-columns:1fr 1fr!important}}
       `}</style>
 
@@ -195,7 +197,7 @@ export default function LoginPage() {
           <div style={{ display: "flex", justifyContent: "center", gap: 32, flexWrap: "wrap" }}>
             {[{ l: "WSIB OPM", s: "Operational Policy Manual", i: "\uD83D\uDCDA" }, { l: "ICD-10", s: "Medical Classification", i: "\uD83C\uDFE5" }, { l: "ODG", s: "Disability Guidelines", i: "\uD83D\uDCC4" }, { l: "PIPEDA", s: "Privacy Compliance", i: "\uD83D\uDD12" }, { l: "WSIA", s: "Ontario Legislation", i: "\u2696\uFE0F" }].map((x, i) => (
               <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 56, height: 56, borderRadius: 14, background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{x.i}</div>
+                <div style={{ width: 56, height: 56, borderRadius: 14, background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", display: "flex", alignItems: "center", justifyContent: "center" }} dangerouslySetInnerHTML={{ __html: x.i }} />
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{x.l}</div>
                 <div style={{ fontSize: 11, color: "#AEAEB2" }}>{x.s}</div>
               </div>
