@@ -381,6 +381,41 @@ return w}
 function getWorkflowStatus(claim){if(!claim)return{steps:[],currentIdx:0,pct:0};const steps=WORKFLOW_STEPS.map(s=>{const checks=s.checks.map(ch=>({...ch,done:ch.test(claim)}));const complete=checks.every(ch=>ch.done);const partial=checks.some(ch=>ch.done);return{...s,checks,complete,partial}});let currentIdx=steps.findIndex(s=>!s.complete);if(currentIdx<0)currentIdx=steps.length-1;const done=steps.filter(s=>s.complete).length;const pct=Math.round((done/steps.length)*100);return{steps,currentIdx,pct}}
 
 
+
+/* === PII Redaction Engine === */
+const PII_PATTERNS=[
+{name:"SIN",pattern:/\d{3}[-\s]?\d{3}[-\s]?\d{3}/g,replace:"[SIN-REDACTED]"},
+{name:"Phone",pattern:/(?:\+?1[-\s]?)?\(?\d{3}\)?[-\s]?\d{3}[-\s]?\d{4}/g,replace:"[PHONE-REDACTED]"},
+{name:"Email",pattern:/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,replace:"[EMAIL-REDACTED]"},
+{name:"DOB",pattern:/\b(?:DOB|Date of Birth|Born)[:\s]*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}/gi,replace:"[DOB-REDACTED]"},
+{name:"DOB-numeric",pattern:/\b(?:DOB|Date of Birth|Born)[:\s]*\d{4}[-\/]\d{2}[-\/]\d{2}/gi,replace:"[DOB-REDACTED]"},
+{name:"Postal",pattern:/\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b/gi,replace:"[POSTAL-REDACTED]"},
+{name:"Address",pattern:/\d+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd|Crescent|Cres|Court|Ct|Lane|Ln|Way|Place|Pl|Circle|Cir)[\.\s,]*/gi,replace:"[ADDRESS-REDACTED]"},
+{name:"HealthCard",pattern:/\b\d{4}[-\s]?\d{3}[-\s]?\d{3}[-\s]?[A-Z]{2}\b/g,replace:"[HEALTHCARD-REDACTED]"},
+];
+function redactPII(text,level){
+if(!text||level==="off")return text;
+let redacted=text;
+let count=0;
+PII_PATTERNS.forEach(p=>{
+if(level==="maximum"||(level==="standard"&&!["Address"].includes(p.name))){
+const matches=redacted.match(p.pattern);
+if(matches)count+=matches.length;
+redacted=redacted.replace(p.pattern,p.replace);
+}});
+if(level==="maximum"){
+/* Also redact full names — replace "FirstName LastName" patterns after common labels */
+redacted=redacted.replace(/(?:Worker|Patient|Employee|Claimant|Name)[:\s]+([A-Z][a-z]+\s+[A-Z]?\.?\s*[A-Z][a-z]+)/g,(m,name)=>"Worker: [NAME-REDACTED]");
+}
+return redacted;
+}
+function countPII(text){
+if(!text)return 0;
+let count=0;
+PII_PATTERNS.forEach(p=>{const m=text.match(p.pattern);if(m)count+=m.length});
+return count;
+}
+
 /* === Inline Help Tooltips === */
 const WSIB_TERMS={"OPM":"Operational Policy Manual - WSIB\'s official policy guide for claim adjudication","LOE":"Loss of Earnings - wage replacement benefit at 85% of net pre-injury earnings","NEL":"Non-Economic Loss - lump sum for permanent impairment","FAF":"Functional Abilities Form - physician report on work restrictions","Form 6":"Worker\'s Report of Injury - filed by the injured worker","Form 7":"Employer\'s Report of Injury - must be filed within 3 business days","Form 8":"Health Professional\'s Report - filed by the treating physician","RTW":"Return to Work - the process of getting the worker back to employment","WSIB":"Workplace Safety and Insurance Board - Ontario\'s workers compensation authority","WSIAT":"Workplace Safety and Insurance Appeals Tribunal - handles WSIB appeals","PIPEDA":"Personal Information Protection and Electronic Documents Act","ICD-10":"International Classification of Diseases, 10th Revision","AWW":"Average Weekly Wage - used to calculate LOE benefits","WSIA":"Workplace Safety and Insurance Act - the governing legislation","TPA":"Third Party Administrator - manages claims on behalf of employers","FROI":"First Report of Injury - initial claim filing","CRT":"Claims Review Tribunal","SIEF":"Second Injury and Enhancement Fund"};
 
@@ -429,7 +464,7 @@ const AI_TOOLS=[
 /* ═══════════════════════════════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════════════════════════════ */
-export default function DashboardClient({user}){const[view,setView]=useState("home");const[claims,setClaims]=useState([]);const[active,setActive]=useState(null);const[msgs,setMsgs]=useState([]);const[input,setInput]=useState("");const[loading,setLoading]=useState(false);const[files,setFiles]=useState([]);const[fc,setFc]=useState({});const[modal,setModal]=useState(null);const[nf,setNf]=useState({claimNumber:"",worker:"",employer:"",injuryDate:"",injuryType:"Acute Injury",description:""});const[noteIn,setNoteIn]=useState("");const[filter,setFilter]=useState("all");const[searchQ,setSearchQ]=useState("");const[detailTab,setDetailTab]=useState("overview");const[showCalc,setShowCalc]=useState(false);const[showAnalytics,setShowAnalytics]=useState(false);const[showTemplates,setShowTemplates]=useState(false);const[bulkSelect,setBulkSelect]=useState([]);const[showNotifs,setShowNotifs]=useState(false);const[readNotifs,setReadNotifs]=useState(()=>{try{return JSON.parse(localStorage.getItem("ca_read_notifs_"+(user?.email||""))||"[]")}catch{return[]}});const[showGlossary,setShowGlossary]=useState(false);const[glossarySearch,setGlossarySearch]=useState("");const[homeTab,setHomeTab]=useState("overview");const[commLog,setCommLog]=useState({to:"",method:"email",date:"",note:""});const[taskInput,setTaskInput]=useState("");const[valuation,setValuation]=useState({});const[providerForm,setProviderForm]=useState({name:"",type:"Family Doctor",phone:"",status:"requested"});const[cmdOpen,setCmdOpen]=useState(false);const[showOnboarding,setShowOnboarding]=useState(false);const[compareMode,setCompareMode]=useState(false);const[dragCard,setDragCard]=useState(null);const[dragOver,setDragOver]=useState(null);const[compareCases,setCompareCases]=useState([]);const[showImport,setShowImport]=useState(false);const[expandedActivity,setExpandedActivity]=useState(null);const[inlineEdit,setInlineEdit]=useState(null);const[inlineVal,setInlineVal]=useState("");const[showBilling,setShowBilling]=useState(false);const[userPlan,setUserPlan]=useState(()=>{if(typeof window!=="undefined")return localStorage.getItem("ca_plan_"+user?.email)||"starter";return"starter"});const[undoStack,setUndoStack]=useState([]);const[onboardStep,setOnboardStep]=useState(0);const[showShortcuts,setShowShortcuts]=useState(false);const[sideHover,setSideHover]=useState(false);const[diaryEntry,setDiaryEntry]=useState({date:"",note:"",caseId:""});const[emailModal,setEmailModal]=useState(null);const[emailSending,setEmailSending]=useState(false);const[emailStatus,setEmailStatus]=useState(null);const[cmdQ,setCmdQ]=useState("");const[quickNote,setQuickNote]=useState({open:false,text:"",caseId:""});const[timer,setTimer]=useState({running:false,caseId:null,start:null,entries:[]});const[savedMemos,setSavedMemos]=useState([]);async function sendEmail(to,subject,body,cc,bcc){setEmailSending(true);setEmailStatus(null);try{const res=await fetch("/api/email",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to,subject,body,cc:cc||undefined,bcc:bcc||undefined,claimNumber:active?.claimNumber,senderName:user?.name||user?.email,senderEmail:user?.email})});const data=await res.json();if(data.success){setEmailStatus("sent");if(active){const cl={...active};cl.emails=[...(cl.emails||[]),{id:Date.now(),from:user?.email,to,cc:cc||"",subject,body,date:new Date().toISOString(),direction:"outbound"}];cl.comms=[...(cl.comms||[]),{to,method:"email",date:new Date().toISOString(),note:"Email: "+subject}];cl.timeline=[...(cl.timeline||[]),{date:new Date().toISOString(),type:"note",note:"Email sent to "+to+": "+subject}];saveClaim(cl)}setTimeout(()=>{setEmailModal(null);setEmailStatus(null)},1500)}else{setEmailStatus("error: "+(data.error||"Failed"))}}catch(e){setEmailStatus("error: "+e.message)}finally{setEmailSending(false)}}
+export default function DashboardClient({user}){const[view,setView]=useState("home");const[claims,setClaims]=useState([]);const[active,setActive]=useState(null);const[msgs,setMsgs]=useState([]);const[input,setInput]=useState("");const[loading,setLoading]=useState(false);const[files,setFiles]=useState([]);const[fc,setFc]=useState({});const[modal,setModal]=useState(null);const[nf,setNf]=useState({claimNumber:"",worker:"",employer:"",injuryDate:"",injuryType:"Acute Injury",description:""});const[noteIn,setNoteIn]=useState("");const[filter,setFilter]=useState("all");const[searchQ,setSearchQ]=useState("");const[detailTab,setDetailTab]=useState("overview");const[showCalc,setShowCalc]=useState(false);const[showAnalytics,setShowAnalytics]=useState(false);const[showTemplates,setShowTemplates]=useState(false);const[bulkSelect,setBulkSelect]=useState([]);const[showNotifs,setShowNotifs]=useState(false);const[readNotifs,setReadNotifs]=useState(()=>{try{return JSON.parse(localStorage.getItem("ca_read_notifs_"+(user?.email||""))||"[]")}catch{return[]}});const[showGlossary,setShowGlossary]=useState(false);const[glossarySearch,setGlossarySearch]=useState("");const[homeTab,setHomeTab]=useState("overview");const[commLog,setCommLog]=useState({to:"",method:"email",date:"",note:""});const[taskInput,setTaskInput]=useState("");const[valuation,setValuation]=useState({});const[providerForm,setProviderForm]=useState({name:"",type:"Family Doctor",phone:"",status:"requested"});const[cmdOpen,setCmdOpen]=useState(false);const[showOnboarding,setShowOnboarding]=useState(false);const[compareMode,setCompareMode]=useState(false);const[dragCard,setDragCard]=useState(null);const[dragOver,setDragOver]=useState(null);const[compareCases,setCompareCases]=useState([]);const[showImport,setShowImport]=useState(false);const[expandedActivity,setExpandedActivity]=useState(null);const[inlineEdit,setInlineEdit]=useState(null);const[inlineVal,setInlineVal]=useState("");const[showBilling,setShowBilling]=useState(false);const[privacyLevel,setPrivacyLevel]=useState(()=>{try{return localStorage.getItem("ca_privacy_"+(user?.email||""))||"standard"}catch{return"standard"}});const[showPrivacy,setShowPrivacy]=useState(false);const[userPlan,setUserPlan]=useState(()=>{if(typeof window!=="undefined")return localStorage.getItem("ca_plan_"+user?.email)||"starter";return"starter"});const[undoStack,setUndoStack]=useState([]);const[onboardStep,setOnboardStep]=useState(0);const[showShortcuts,setShowShortcuts]=useState(false);const[sideHover,setSideHover]=useState(false);const[diaryEntry,setDiaryEntry]=useState({date:"",note:"",caseId:""});const[emailModal,setEmailModal]=useState(null);const[emailSending,setEmailSending]=useState(false);const[emailStatus,setEmailStatus]=useState(null);const[cmdQ,setCmdQ]=useState("");const[quickNote,setQuickNote]=useState({open:false,text:"",caseId:""});const[timer,setTimer]=useState({running:false,caseId:null,start:null,entries:[]});const[savedMemos,setSavedMemos]=useState([]);async function sendEmail(to,subject,body,cc,bcc){setEmailSending(true);setEmailStatus(null);try{const res=await fetch("/api/email",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to,subject,body,cc:cc||undefined,bcc:bcc||undefined,claimNumber:active?.claimNumber,senderName:user?.name||user?.email,senderEmail:user?.email})});const data=await res.json();if(data.success){setEmailStatus("sent");if(active){const cl={...active};cl.emails=[...(cl.emails||[]),{id:Date.now(),from:user?.email,to,cc:cc||"",subject,body,date:new Date().toISOString(),direction:"outbound"}];cl.comms=[...(cl.comms||[]),{to,method:"email",date:new Date().toISOString(),note:"Email: "+subject}];cl.timeline=[...(cl.timeline||[]),{date:new Date().toISOString(),type:"note",note:"Email sent to "+to+": "+subject}];saveClaim(cl)}setTimeout(()=>{setEmailModal(null);setEmailStatus(null)},1500)}else{setEmailStatus("error: "+(data.error||"Failed"))}}catch(e){setEmailStatus("error: "+e.message)}finally{setEmailSending(false)}}
 function pushUndo(label,rollback){setUndoStack(p=>[{label,rollback,ts:Date.now()},...p].slice(0,5));setTimeout(()=>setUndoStack(p=>p.filter(u=>Date.now()-u.ts<8000)),8500)}
 const fRef=useRef(null);const endRef=useRef(null);const taRef=useRef(null);
 
@@ -461,7 +496,7 @@ const handleAction=(a)=>{if(a.action==="upload"){fRef.current?.click();return}if
 
 const send=async(override)=>{const text=override||input.trim();if(!text&&files.length===0)return;setInput("");if(taRef.current)taRef.current.style.height="auto";let content=text;const af=[...files];if(af.length>0&&Object.keys(fc).length>0)content=`${text||"Please analyze these claim documents."}\n\n[UPLOADED DOCUMENTS]\n${Object.entries(fc).map(([n,c])=>`── ${n} ──\n${c}`).join("\n\n────\n\n")}`;if(active)content=`[CLAIM CONTEXT]\nClaim #: ${active.claimNumber}\nWorker: ${active.worker}\nEmployer: ${active.employer}\nInjury Date: ${active.injuryDate}\nType: ${active.injuryType}\nStatus: ${stageOf(active.stage).label}\nDescription: ${active.description||"N/A"}\nDays since injury: ${active.injuryDate!=="—"?daysAgo(active.injuryDate):"unknown"}\nDocuments on file: ${active.documents?.length||0} (${(active.documents||[]).map(d=>d.tag).filter((v,i,a)=>a.indexOf(v)===i).join(", ")||"none"})\nPrevious analyses: ${active.analyses?.length||0}\n\n${content}`;const um={role:"user",display:text||`Uploaded ${af.length} document${af.length>1?"s":""}`,content,files:af.map(f=>f.name),ts:new Date().toISOString()};const newMsgs=[...msgs,um];setMsgs(newMsgs);setFiles([]);setFc({});setLoading(true);
 if(active&&af.length>0){const c={...active};c.documents=[...(c.documents||[]),...af.map(f=>({name:f.name,tag:guessDocType(f.name),addedAt:new Date().toISOString()}))];c.timeline=[...(c.timeline||[]),...af.map(f=>({date:new Date().toISOString(),type:"document",note:`Uploaded: ${f.name}`}))];saveClaim(c)}
-try{const hist=newMsgs.slice(-20).map(m=>({role:m.role==="user"?"user":"assistant",content:m.content}));const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:hist,documentTexts:fc})});const data=await res.json();if(!res.ok)throw new Error(data.error||"Request failed");const reply=data.reply;const am={role:"assistant",content:reply,ts:new Date().toISOString()};const final=[...newMsgs,am];setMsgs(final);if(active){const c={...active,messages:final};if(/RULING PREDICTION|Five Point Check/i.test(reply)){const ruling=/Allow/i.test(reply)&&!/Deny/i.test(reply.split("RULING")[1]||"")?"Allow":/Deny/i.test(reply)?"Deny":"Further Investigation";c.analyses=[...(c.analyses||[]),{date:new Date().toISOString(),ruling,snippet:reply.slice(0,200)}];
+try{const hist=newMsgs.slice(-20).map(m=>({role:m.role==="user"?"user":"assistant",content:m.content}));const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:hist.map(m=>({...m,content:redactPII(m.content,privacyLevel)})),documentTexts:Object.fromEntries(Object.entries(fc).map(([k,v])=>[k,redactPII(v,privacyLevel)]))})});const data=await res.json();if(!res.ok)throw new Error(data.error||"Request failed");const reply=data.reply;const am={role:"assistant",content:reply,ts:new Date().toISOString()};const final=[...newMsgs,am];setMsgs(final);if(active){const c={...active,messages:final};if(/RULING PREDICTION|Five Point Check/i.test(reply)){const ruling=/Allow/i.test(reply)&&!/Deny/i.test(reply.split("RULING")[1]||"")?"Allow":/Deny/i.test(reply)?"Deny":"Further Investigation";c.analyses=[...(c.analyses||[]),{date:new Date().toISOString(),ruling,snippet:reply.slice(0,200)}];
 c.tasks=[...(c.tasks||[]),...[
 {id:Date.now()+1,text:"Review AI ruling prediction: "+ruling,done:false,created:new Date().toISOString(),auto:true},
 ruling==="Allow"?{id:Date.now()+2,text:"Prepare approval letter and benefits calculation",done:false,created:new Date().toISOString(),auto:true}:
@@ -518,6 +553,7 @@ return(<><style jsx global>{`
 {sideHover&&<span style={{fontSize:12,fontWeight:600,letterSpacing:-.1,color:"#fff"}}>{t.label}</span>}
 </button>))}
 <div style={{flex:1}}/>
+<button onClick={()=>setShowPrivacy(true)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px",margin:"1px 8px",borderRadius:10,border:"none",background:"transparent",color:"rgba(255,255,255,.5)",cursor:"pointer",overflow:"hidden",whiteSpace:"nowrap"}}><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" style={{flexShrink:0}}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>{sideHover&&<span style={{fontSize:12,fontWeight:500,color:"rgba(255,255,255,.6)"}}>Privacy</span>}</button>
 <button onClick={()=>setShowBilling(true)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px",margin:"1px 8px",borderRadius:10,border:"none",background:"transparent",color:"rgba(255,255,255,.5)",cursor:"pointer",overflow:"hidden",whiteSpace:"nowrap"}}><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" style={{flexShrink:0}}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/></svg>{sideHover&&<span style={{fontSize:12,fontWeight:500,color:"rgba(255,255,255,.6)"}}>Billing</span>}</button>
 <button onClick={()=>signOut({callbackUrl:"/login"})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px",margin:"1px 8px",borderRadius:10,border:"none",background:"transparent",color:"rgba(255,255,255,.5)",cursor:"pointer",overflow:"hidden",whiteSpace:"nowrap"}}>
 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" style={{flexShrink:0}}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
@@ -1287,6 +1323,67 @@ return(<div key={i}>
 <button onClick={()=>{setShowOnboarding(false);localStorage.setItem("ca_onboarded_"+user.email,"1")}} style={{padding:"10px 20px",borderRadius:100,fontSize:13,fontWeight:500,border:"1px solid var(--card-border)",background:"#fff",color:"var(--g500)",cursor:"pointer"}}>Skip</button>
 <button onClick={()=>{if(onboardStep<4)setOnboardStep(onboardStep+1);else{setShowOnboarding(false);localStorage.setItem("ca_onboarded_"+user.email,"1")}}} style={{padding:"10px 24px",borderRadius:100,fontSize:13,fontWeight:600,border:"none",background:"var(--blue)",color:"#fff",cursor:"pointer"}}>{onboardStep<4?"Next":"Get Started"}</button>
 </div>
+</div>
+</div>
+</div>}
+
+{/* PRIVACY & DATA PROTECTION */}
+{showPrivacy&&<div onClick={e=>{if(e.target===e.currentTarget)setShowPrivacy(false)}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.4)",backdropFilter:"blur(8px)",zIndex:340,display:"flex",alignItems:"center",justifyContent:"center"}}>
+<div style={{width:540,maxWidth:"calc(100vw - 32px)",background:"#fff",borderRadius:16,boxShadow:"0 24px 64px rgba(0,0,0,.15)",padding:"28px",maxHeight:"85vh",overflowY:"auto"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><span style={{fontSize:18,fontWeight:700}}>Privacy & Data Protection</span><button onClick={()=>setShowPrivacy(false)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--g400)",fontSize:18}}>x</button></div>
+
+<div style={{padding:"16px",background:"rgba(59,94,192,.06)",border:"1px solid rgba(59,94,192,.12)",borderRadius:12,marginBottom:16}}>
+<div style={{fontSize:13,fontWeight:700,color:"#251A5E",marginBottom:4}}>PIPEDA Compliant</div>
+<div style={{fontSize:12,color:"var(--g600)",lineHeight:1.6}}>CaseAssist automatically strips personally identifiable information (PII) before sending data to the AI. No PII is stored on our servers. All case data is stored locally in your browser.</div>
+</div>
+
+<div style={{fontSize:13,fontWeight:700,color:"var(--g800)",marginBottom:8}}>PII Redaction Level</div>
+<div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
+{[
+{id:"maximum",label:"Maximum Protection",desc:"Strips names, SIN, DOB, phone, email, address, postal code, health card numbers. Replaces worker names with [NAME-REDACTED]. Best for sensitive claims.",color:"var(--green)"},
+{id:"standard",label:"Standard Protection (Recommended)",desc:"Strips SIN, DOB, phone, email, postal code, health card numbers. Keeps names and addresses for context. Balances privacy with AI accuracy.",color:"var(--blue)"},
+{id:"off",label:"No Redaction",desc:"All data sent to AI as-is. Only use if you have assessed the risk and your organization permits it. Not recommended for claims with sensitive PII.",color:"var(--red)"}
+].map(opt=>(
+<button key={opt.id} onClick={()=>{setPrivacyLevel(opt.id);localStorage.setItem("ca_privacy_"+(user?.email||""),opt.id)}} style={{padding:"14px 16px",borderRadius:12,border:privacyLevel===opt.id?"2px solid "+opt.color:"1px solid var(--card-border)",background:privacyLevel===opt.id?opt.color+"08":"#fff",cursor:"pointer",textAlign:"left"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+<div style={{fontSize:13,fontWeight:600,color:"var(--g800)"}}>{opt.label}</div>
+{privacyLevel===opt.id&&<span style={{fontSize:10,fontWeight:700,color:opt.color,padding:"2px 8px",borderRadius:100,background:opt.color+"15"}}>Active</span>}
+</div>
+<div style={{fontSize:11,color:"var(--g500)",marginTop:4,lineHeight:1.5}}>{opt.desc}</div>
+</button>))}
+</div>
+
+<div style={{fontSize:13,fontWeight:700,color:"var(--g800)",marginBottom:8}}>What Gets Redacted</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:16}}>
+{[{label:"Social Insurance Numbers",example:"***-***-*** -> [SIN-REDACTED]",levels:["standard","maximum"]},
+{label:"Phone Numbers",example:"(905) 555-0147 -> [PHONE-REDACTED]",levels:["standard","maximum"]},
+{label:"Email Addresses",example:"name@email.com -> [EMAIL-REDACTED]",levels:["standard","maximum"]},
+{label:"Dates of Birth",example:"DOB: Sept 14, 1985 -> [DOB-REDACTED]",levels:["standard","maximum"]},
+{label:"Postal Codes",example:"L8P 3R2 -> [POSTAL-REDACTED]",levels:["standard","maximum"]},
+{label:"Health Card Numbers",example:"1234-567-890-AB -> [HEALTHCARD-REDACTED]",levels:["standard","maximum"]},
+{label:"Street Addresses",example:"47 Lakeview Cres -> [ADDRESS-REDACTED]",levels:["maximum"]},
+{label:"Full Names",example:"James Mitchell -> [NAME-REDACTED]",levels:["maximum"]}
+].map((item,i)=>(
+<div key={i} style={{padding:"10px 12px",borderRadius:10,border:"1px solid var(--card-border)",background:item.levels.includes(privacyLevel)?"rgba(40,167,69,.04)":"#fff"}}>
+<div style={{fontSize:12,fontWeight:600,color:"var(--g800)",display:"flex",alignItems:"center",gap:4}}>
+{item.levels.includes(privacyLevel)?<span style={{color:"var(--green)"}}>{"\u2713"}</span>:<span style={{color:"var(--g300)"}}>{"\u2014"}</span>}
+{item.label}
+</div>
+<div style={{fontSize:10,color:"var(--g400)",marginTop:2,fontFamily:"monospace"}}>{item.example}</div>
+</div>))}
+</div>
+
+<div style={{fontSize:13,fontWeight:700,color:"var(--g800)",marginBottom:8}}>How Your Data is Handled</div>
+<div style={{fontSize:12,color:"var(--g600)",lineHeight:1.7,marginBottom:16}}>
+<div style={{marginBottom:8}}>{"\u2022"} <strong>Case data</strong> is stored locally in your browser (localStorage). It never leaves your device unless you use the AI Advisor.</div>
+<div style={{marginBottom:8}}>{"\u2022"} <strong>AI messages</strong> are sent to Anthropic (Claude) for processing. PII is redacted before sending based on your privacy level.</div>
+<div style={{marginBottom:8}}>{"\u2022"} <strong>Anthropic does not train</strong> on data sent through the API. Messages are processed and discarded per their data retention policy.</div>
+<div style={{marginBottom:8}}>{"\u2022"} <strong>Emails</strong> sent via CaseAssist go through Resend (email provider). Only the email content you compose is transmitted.</div>
+<div>{"\u2022"} <strong>No server-side storage</strong> of case data. CaseAssist does not maintain a database of your claims (authentication data only).</div>
+</div>
+
+<div style={{padding:"12px 16px",background:"var(--g50)",borderRadius:10,fontSize:11,color:"var(--g500)",lineHeight:1.6}}>
+<strong>Legal Notice:</strong> CaseAssist is an advisory tool. Users are responsible for ensuring their use of CaseAssist complies with applicable privacy legislation including PIPEDA, FIPPA, and PHIPA. Organizations should conduct their own privacy impact assessment before processing personal health information through any AI system.
 </div>
 </div>
 </div>}
