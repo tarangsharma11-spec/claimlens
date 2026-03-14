@@ -800,6 +800,8 @@ return(<><style jsx global>{`
 
 {/* RTW Progress */}
 {(active.documents?.some(d=>["medical","form8","physio","specialist","imaging"].includes(d.tag))||active.analyses?.length>0)?<RTWBar progress={getRTWProgress(active)}/>:
+<div style={{padding:"14px 18px",background:"var(--g50)",borderRadius:12,border:"1px solid var(--card-border)",marginBottom:16,fontSize:13,color:"var(--g500)"}}><strong style={{color:"var(--g700)"}}>RTW Timeline:</strong> Upload medical evidence or run an AI analysis to generate return-to-work projections.</div>}
+
 {/* VISUAL CASE TIMELINE */}
 {(active.timeline||[]).length>0&&<div style={{marginBottom:14}}>
 <div style={{padding:"18px 20px",background:"#fff",borderRadius:16,border:"1px solid var(--card-border)",boxShadow:"var(--card-shadow)"}}>
@@ -819,8 +821,6 @@ return(<div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,margin
 </div>
 </div>
 </div>}
-
-<div style={{padding:"14px 18px",background:"var(--g50)",borderRadius:12,border:"1px solid var(--card-border)",marginBottom:16,fontSize:13,color:"var(--g500)"}}><strong style={{color:"var(--g700)"}}>RTW Timeline:</strong> Upload medical evidence or run an AI analysis to generate return-to-work projections.</div>}
 {/* Deadlines */}
 <DeadlineBar deadlines={getDeadlines(active)}/>
 {/* Risk Assessment */}
