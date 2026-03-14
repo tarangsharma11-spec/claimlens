@@ -15,7 +15,7 @@ export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
   // Public routes — no auth required
-  const publicPaths = ["/login", "/pricing", "/demo", "/blog", "/api/auth", "/_next", "/favicon", "/verify", "/reset-password"];
+  const publicPaths = ["/login", "/pricing", "/demo", "/blog", "/api/auth", "/_next", "/favicon", "/reset-password"];
   if (publicPaths.some((p) => pathname.startsWith(p)) || pathname === "/") {
     return NextResponse.next();
   }
@@ -28,11 +28,6 @@ export async function middleware(request) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  // SSO users with pending_code status need to verify their access code
-  if (token.status === "pending_code" && !pathname.startsWith("/verify") && !pathname.startsWith("/api/auth")) {
-    return NextResponse.redirect(new URL("/verify", request.url));
   }
 
   // Attach user email to request headers for API routes
