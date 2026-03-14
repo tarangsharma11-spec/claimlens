@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/lib/auth";
 import { searchPolicies, getPolicySummaries } from "@/app/lib/opm-search";
 
 /**
@@ -10,7 +11,7 @@ import { searchPolicies, getPolicySummaries } from "@/app/lib/opm-search";
  * Returns all policy summaries (code + title, no full text).
  */
 export async function GET(request) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

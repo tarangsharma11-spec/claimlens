@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/lib/auth";
 import { searchPolicies, formatPoliciesForPrompt } from "@/app/lib/opm-search";
 
 /**
@@ -51,7 +52,7 @@ RESPONSE FORMAT for ruling guidance:
 Advisory only — final decisions by authorized WSIB decision-makers.`;
 
 export async function POST(request) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
