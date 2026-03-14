@@ -536,10 +536,11 @@ return(<div key={gi}>
 <div><div style={{fontSize:13,fontWeight:700,color:"var(--g900)"}}>{current.title}</div><div style={{fontSize:11,color:"var(--g500)"}}>{current.phase}</div></div>
 </div>
 <div style={{marginBottom:8}}>{current.checks.map(ch=>(
-<div key={ch.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0"}}>
-<div style={{width:16,height:16,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,flexShrink:0,background:ch.done?"var(--green)":"transparent",border:ch.done?"none":"1.5px solid var(--g300)",color:"#fff"}}>{ch.done?"✓":""}</div>
-<span style={{fontSize:12,color:ch.done?"var(--g500)":"var(--g800)",textDecoration:ch.done?"line-through":"none"}}>{ch.label}</span>
+<div key={ch.id} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"5px 0",cursor:current.id==="contact"&&!ch.done?"pointer":"default"}} onClick={()=>{if(current.id==="contact"&&!ch.done){const field=ch.id==="worker_contact"?"worker":ch.id==="employer_contact"?"employer":"medical";const cl={...active,threePoint:{...(active.threePoint||{}),[""+field]:new Date().toISOString()},timeline:[...(active.timeline||[]),{date:new Date().toISOString(),type:"note",note:(ch.label)+" — contact logged"}]};saveClaim(cl)}}}>
+<div style={{width:16,height:16,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,flexShrink:0,marginTop:1,background:ch.done?"var(--green)":"transparent",border:ch.done?"none":"1.5px solid var(--g300)",color:"#fff",cursor:current.id==="contact"?"pointer":"default"}}>{ch.done?"✓":""}</div>
+<div><span style={{fontSize:12,color:ch.done?"var(--g500)":"var(--g800)",textDecoration:ch.done?"line-through":"none"}}>{ch.label}</span>{ch.desc&&!ch.done&&<div style={{fontSize:11,color:"var(--g400)",marginTop:1,lineHeight:1.3}}>{ch.desc}</div>}</div>
 </div>))}</div>
+{current.desc&&<div style={{fontSize:11,color:"var(--g500)",marginBottom:8,lineHeight:1.4,padding:"6px 10px",background:"rgba(0,113,227,.03)",borderRadius:8}}>{current.desc}</div>}
 <button onClick={()=>{if(current.actionNav==="chat"){setMsgs(active.messages||[]);nav("chat")}else setDetailTab(current.actionNav||"overview")}} style={{padding:"8px 16px",borderRadius:100,fontSize:12,fontWeight:600,border:"none",background:"var(--blue)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
 <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
 {current.action}</button>
