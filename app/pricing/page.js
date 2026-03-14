@@ -154,6 +154,7 @@ export default function PricingPage() {
           .pricing-mobile-menu.open{display:flex!important;flex-direction:column;position:absolute;top:100%;left:0;right:0;background:rgba(250,251,252,.98);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.06);padding:12px 20px 20px;gap:4px;z-index:99}
           .pricing-mobile-menu.open a{display:block;padding:12px 0;font-size:15px!important}
           .pricing-grid{grid-template-columns:1fr!important;max-width:400px!important;margin-left:auto!important;margin-right:auto!important}
+          .compare-table{font-size:11px!important}
           .pricing-card:hover{transform:none!important}
           .compare-table{overflow-x:auto!important;-webkit-overflow-scrolling:touch}
           .compare-row{grid-template-columns:1fr 70px 70px 70px!important;font-size:12px!important;padding:8px 12px!important}
@@ -226,7 +227,7 @@ export default function PricingPage() {
       </section>
 
       {/* PRICING CARDS */}
-      <section className="pricing-grid" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 60px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "start" }}>
+      <section className="pricing-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 60px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, alignItems: "start" }}>
         {PLANS.map((plan) => (
           <div key={plan.id} className="pricing-card" style={{
             padding: "32px 28px",
