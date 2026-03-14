@@ -46,9 +46,25 @@ export const authOptions = {
 
   callbacks: {
     async signIn({ user, account, profile }) {
+      // For all providers: activate any pending invite on login
+      const email = (user.email || "").toLowerCase();
+      if (email) {
+        try {
+          const invite = await sql`
+            SELECT m.id, m.org_id, m.role FROM memberships m
+            WHERE m.user_email = ${email} AND m.status = 'invited'
+            LIMIT 1
+          `;
+          if (invite.rows.length > 0) {
+            const inv = invite.rows[0];
+            await sql`UPDATE memberships SET status = 'active', joined_at = NOW() WHERE id = ${inv.id}`;
+            await sql`UPDATE users SET org_id = ${inv.org_id} WHERE email = ${email}`;
+          }
+        } catch {}
+      }
+
       if (account?.provider === "credentials") return true;
 
-      const email = user.email?.toLowerCase();
       if (!email) return false;
 
       try {
